@@ -22,3 +22,6 @@ In order to visualize these recommendations in Power BI, you need to do the foll
 6. The template will refresh with latest recommendations for your Azure resources across all Azure subscriptions that you have access to.
 
 7. You can save the file as a regular Power BI file and open that directly next time (it will use your saved credentials to log in).
+
+
+The PowerShell script is used to refresh recommendations in the service so in order to get the latest set of recommendations, you will need to run the PowerShell script (i.e. step 3 above) before refreshing the Power BI file.
