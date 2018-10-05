@@ -1,0 +1,1 @@
+Sample Python script to configure Azure Advisor thresholds using Azure CLI

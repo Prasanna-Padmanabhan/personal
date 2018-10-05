@@ -1,0 +1,1 @@
+Samples related to Azure Advisor (https://azure.microsoft.com/en-us/services/advisor/)
