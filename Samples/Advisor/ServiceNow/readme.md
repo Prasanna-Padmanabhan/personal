@@ -8,14 +8,13 @@ The steps are very similar to those listed at https://docs.microsoft.com/en-us/a
 
 You will be using the following JavaScript code:
 
-    >[!NOTE]
-    >You need to update the `<secret>`,`<group>`, and `<email>` value in the script below.
-    >* `<secret>` should be a random string, like a GUID
-    >* `<group>` should be the ServiceNow group you want to assign the incident to
-    >* `<email>` should be the specific person you want to assign the incident to (optional)
-    >
+>You need to update the `<secret>`,`<group>`, and `<email>` value in the script below.
+>* `<secret>` should be a random string, like a GUID
+>* `<group>` should be the ServiceNow group you want to assign the incident to
+>* `<email>` should be the specific person you want to assign the incident to (optional)
+>
 
-    ```javascript
+```javascript
     (function process( /*RESTAPIRequest*/ request, /*RESTAPIResponse*/ response) {
         var apiKey = request.queryParams['apiKey'];
         var secret = '<secret>';
@@ -53,15 +52,15 @@ You will be using the following JavaScript code:
             response.setError(unauthorized);
         }
     })(request, response);
-    ```
+```
 
 When the alert triggers you will see a new Change Request in ServiceNow as shown below.
 
-![New Change Request](./images/new-change-request.png)
+![New Change Request](./images/new-change-request.PNG)
 
 When you click on the Change Request, you will see the details as shown below.
 
-![Change Request Details](./images/change-request-details.png)
+![Change Request Details](./images/change-request-details.PNG)
 
 You can then use your normal process to get the change request approved.
 
