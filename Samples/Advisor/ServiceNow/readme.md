@@ -4,6 +4,19 @@ This article shows you how to integrate Azure Advisor alerts with ServiceNow usi
 
 You can follow the steps below to create a new change request in ServiceNow whenever a new Azure Advisor recommendation is available. Once the change request is Approved within ServiceNow, the responsible person can then implement the suggested action(s) associated with the Azure Advisor recommendation.
 
+
+### Create a new table in ServiceNow
+
+1. In ServiceNow, navigate to Tables and click on New.
+
+![New Table](./images/servicenow-new-table.PNG)
+
+2. Provide an appropriate label and name similar to what is shown below.
+
+![Table Properties](./images/servicenow-table-definition.PNG)
+
+3. Note the Name of the new table, you will need it in the next step.
+
 ### Create a scripted REST API in ServiceNow
 
 1. Follow steps 1 through 7 in [this article](https://docs.microsoft.com/en-us/azure/service-health/service-health-alert-webhook-servicenow).
@@ -14,7 +27,7 @@ You can follow the steps below to create a new change request in ServiceNow when
 >* `<secret>` should be a random string, like a GUID
 >* `<group>` should be the ServiceNow group you want to assign the incident to
 >* `<email>` should be the specific person you want to assign the incident to (optional)
->
+>* `<name>` should be the name of the table that you created. In the above example, it is *x_mioms_microsoft_advisor_recommendation*.
 
 ```javascript
     (function process( /*RESTAPIRequest*/ request, /*RESTAPIResponse*/ response) {
@@ -24,7 +37,7 @@ You can follow the steps below to create a new change request in ServiceNow when
             var event = request.body.data;
             var responseBody = {};
             if (event.data.context.activityLog.operationName == 'Microsoft.Advisor/recommendations/available/action') {
-                var inc = new GlideRecord('recommendation');
+                var inc = new GlideRecord('<name>');
                 inc.initialize();
                 inc.short_description = "A new " + event.data.context.activityLog.properties.recommendationCategory + " recommendation is available.";
                 inc.description = event.data.context.activityLog.description + "\n";
@@ -56,6 +69,11 @@ You can follow the steps below to create a new change request in ServiceNow when
     })(request, response);
 ```
 
+3. Follow steps 9 through 11 in [this article](https://docs.microsoft.com/en-us/azure/service-health/service-health-alert-webhook-servicenow) and note the full Integration URL, it should look like below.
+
+```
+https://<yourInstanceName>.service-now.com/<baseApiPath>?apiKey=<secret>
+```
 
 ### Create a new alert rule
 
@@ -76,9 +94,18 @@ You can follow the steps below to create a new change request in ServiceNow when
 
 ![Filter Recommendation](./images/alert-new-recommendation.PNG)
 
-### Verify change requests in ServiceNow
+6. Use an existing action group or create a new one. For instructions on how to create an action group, [click here](https://docs.microsoft.com/en-us/azure/azure-monitor/platform/action-groups).
 
-When the alert triggers you will see a new Change Request in ServiceNow as shown below.
+7. Define in the list of Actions:
+	a. Action Type: Webhook
+	b. Details: The ServiceNow Integration URL you previously saved.
+	c. Name: Webhook's name, alias, or identifier.
+
+8. Select Save when done to create the alert.
+
+### See and approve change requests in ServiceNow
+
+Whenever there is a new Azure Advisor recommendation for the resource you selected, you will see a new activity log event. The alert rule you created in the previous step will be triggered and you will see a new Change Request in ServiceNow as shown below.
 
 ![New Change Request](./images/new-change-request.PNG)
 
