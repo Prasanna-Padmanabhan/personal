@@ -1,0 +1,287 @@
+openapi: '3.0.2'
+info:
+  title: SharpJack API
+  version: '1.0'
+servers:
+  - url: https://api.server.test/v1
+paths:
+  /player/{playerId}:
+    get:
+      summary: Get player details.
+      parameters:
+        - name: playerId
+          in: path
+          required: true
+          description: Player ID.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+  /player/:
+    post:
+      summary: Create a new player.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              properties:
+                name:
+                  type: string
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Player'
+  /game/:
+    post:
+      summary: Create a new game.
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GameOptions'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+  /game/{gameId}:
+    get:
+      summary: Get the current state of an existing game.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Game'
+    put:
+      summary: Join or start an existing game.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Player'
+      responses:
+        '204':
+          description: NoContent
+  /game/{gameId}/board:
+    get:
+      summary: Get the leaderboard for the game.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LeaderBoard'
+  /game/{gameId}/questions:
+    get:
+      summary: Get the currently active question.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BasicQuestion'
+    post:
+      summary: Ask a question.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Player'
+      responses:
+        '204':
+          description: NoContent
+  /game/{gameId}/questions/{questionId}:
+    get:
+      summary: Get the question details.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+        - name: questionId
+          in: path
+          required: true
+          description: Question ID.
+          schema:
+            type: integer
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                oneOf:
+                - $ref: '#/components/schemas/BasicQuestion'
+                - $ref: '#/components/schemas/Question'
+    post:
+      summary: Submit an answer.
+      parameters:
+        - name: gameId
+          in: path
+          required: true
+          description: Game ID.
+          schema:
+            type: string
+        - name: questionId
+          in: path
+          required: true
+          description: Question ID.
+          schema:
+            type: integer
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Answer'
+      responses:
+        '204':
+          description: NoContent
+components:
+  schemas:
+    Player:
+      type: object
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+      required:
+        - id
+        - name
+    Game:
+      type: object
+      properties:
+        id:
+          type: string
+        link:
+          type: string
+        state:
+          $ref: '#/components/schemas/GameState'
+        activePlayer:
+          type: integer
+        activeUntil:
+          type: string
+          format: date-time
+      required:
+        - id
+    GameOptions:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        maxPlayers:
+          type: integer
+        maxQuestionTime:
+          type: integer
+        maxAnswerTime:
+          type: integer
+        maxRounds:
+          type: integer
+        maxActiveTime:
+          type: integer
+      required:
+        - playerId
+    Question:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+        answer:
+          type: integer
+      required:
+        - title
+        - answer
+    BasicQuestion:
+      type: object
+      properties:
+        id:
+          type: integer
+        title:
+          type: string
+      required:
+        - id
+        - title
+    Answer:
+      type: object
+      properties:
+        playerId:
+          type: integer
+        value:
+          type: integer
+      required:
+        - playerId
+        - value
+    LeaderBoard:
+      type: array
+      items:
+        type: object
+        properties:
+          playerName:
+            type: string
+          playerScore:
+            type: integer
+    GameState:
+      type: string
+      enum:
+        - Created
+        - Active
+        - Completed
