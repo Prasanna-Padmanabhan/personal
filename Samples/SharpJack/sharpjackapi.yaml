@@ -30,10 +30,7 @@ paths:
         content:
           application/json:
             schema:
-              type: object
-              properties:
-                name:
-                  type: string
+              type: string
       responses:
         '201':
           description: Created
@@ -125,7 +122,7 @@ paths:
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/BasicQuestion'
+                $ref: '#/components/schemas/Question'
     post:
       summary: Ask a question.
       parameters:
@@ -144,32 +141,7 @@ paths:
       responses:
         '204':
           description: NoContent
-  /game/{gameId}/questions/{questionId}:
-    get:
-      summary: Get the question details.
-      parameters:
-        - name: gameId
-          in: path
-          required: true
-          description: Game ID.
-          schema:
-            type: string
-        - name: questionId
-          in: path
-          required: true
-          description: Question ID.
-          schema:
-            type: integer
-      responses:
-        '200':
-          description: OK
-          content:
-            application/json:
-              schema:
-                oneOf:
-                - $ref: '#/components/schemas/BasicQuestion'
-                - $ref: '#/components/schemas/Question'
-    post:
+    put:
       summary: Submit an answer.
       parameters:
         - name: gameId
@@ -178,12 +150,6 @@ paths:
           description: Game ID.
           schema:
             type: string
-        - name: questionId
-          in: path
-          required: true
-          description: Question ID.
-          schema:
-            type: integer
       requestBody:
         required: true
         content:
@@ -247,19 +213,12 @@ components:
           type: string
         answer:
           type: integer
+        playerId:
+          type: integer
       required:
         - title
         - answer
-    BasicQuestion:
-      type: object
-      properties:
-        id:
-          type: integer
-        title:
-          type: string
-      required:
-        - id
-        - title
+        - playerId
     Answer:
       type: object
       properties:
