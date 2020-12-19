@@ -10,11 +10,14 @@ namespace SharpJackApi.Services
     public class GameService
     {
         const int MinimumPlayers = 2;
+        readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
         readonly List<Game> games = new List<Game>();
         readonly List<Player> players = new List<Player>();
         readonly TimeService timeService = new TimeService();
 
         public TimeService TimeService => timeService;
+
+        public event EventHandler<Game> EvaluationCompleted;
 
         public async Task<Player> AddPlayerAsync(string playerName)
         {
@@ -194,7 +197,7 @@ namespace SharpJackApi.Services
         {
             while (!token.IsCancellationRequested)
             {
-                timeService.Sleep(TimeSpan.FromSeconds(1));
+                timeService.Sleep(OneSecond);
                 foreach (var game in games)
                 {
                     // time to evaluate
@@ -246,6 +249,9 @@ namespace SharpJackApi.Services
                         {
                             game.State = GameState.Completed;
                         }
+
+                        // signal that the evaluation is now complete
+                        EvaluationCompleted?.Invoke(this, game);
                     }
                 }
             }
