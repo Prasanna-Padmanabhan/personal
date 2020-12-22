@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Mvc;
+﻿using GameOptions = SharpJackApi.Contracts.GameOptions;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.Extensions.Logging;
 using SharpJackApi.Models;
 using SharpJackApi.Services;

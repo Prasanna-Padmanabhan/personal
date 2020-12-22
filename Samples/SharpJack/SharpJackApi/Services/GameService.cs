@@ -1,4 +1,6 @@
-﻿using SharpJackApi.Models;
+﻿using GameOptions = SharpJackApi.Contracts.GameOptions;
+using GameState = SharpJackApi.Contracts.GameState;
+using SharpJackApi.Models;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -75,12 +77,13 @@ namespace SharpJackApi.Services
                     throw new InvalidOperationException("Too few players");
                 }
 
-                game.State = GameState.Active;
                 game.ActivePlayer = player.Id;
                 game.ActiveUntil = timeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
                 game.ActiveQuestion = null;
                 game.Answers.Clear();
                 game.CurrentRound = 0;
+                // done at the end to avoid race conditions with the engine which checks for this state
+                game.State = GameState.Active;
             }
             else if (!game.Players.Contains(player.Id))
             {

@@ -1,14 +1,12 @@
 ﻿using System.Collections.Generic;
 
-namespace SharpJackApi.Models
+namespace SharpJackApi.Contracts
 {
     public class Row
     {
         public string PlayerName { get; set; }
 
         public int PlayerScore { get; set; }
-
-        public int PlayerId { get; set; }
     }
 
     public class LeaderBoard

@@ -1,15 +1,12 @@
 ﻿using System;
+using System.Runtime.Serialization;
 
-namespace SharpJackApi.Models
+namespace SharpJackApi.Contracts
 {
     public class Answer
     {
         public int PlayerId { get; set; }
 
         public int Value { get; set; }
-
-        public DateTime SubmitTime { get; set; }
-
-        public int Score { get; set; }
     }
 }

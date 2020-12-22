@@ -1,4 +1,4 @@
-﻿namespace SharpJackApi.Models
+﻿namespace SharpJackApi.Contracts
 {
     public class GameOptions
     {
