@@ -43,7 +43,7 @@ namespace SharpJackApi.Services
 
             var game = new Game { Id = games.Count, Options = options, State = GameState.Created };
             game.Players.Add(player.Id);
-            game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerName = player.Name, PlayerScore = 0 });
+            game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
             games.Add(game);
             return await Task.FromResult(game);
         }
@@ -88,7 +88,7 @@ namespace SharpJackApi.Services
             else if (!game.Players.Contains(player.Id))
             {
                 game.Players.Add(player.Id);
-                game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerName = player.Name, PlayerScore = 0 });
+                game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
             }
 
             await Task.CompletedTask;

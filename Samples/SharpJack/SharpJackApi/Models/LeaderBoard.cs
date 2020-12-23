@@ -4,8 +4,6 @@ namespace SharpJackApi.Models
 {
     public class Row
     {
-        public string PlayerName { get; set; }
-
         public int PlayerScore { get; set; }
 
         public int PlayerId { get; set; }
