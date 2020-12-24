@@ -1,7 +1,4 @@
-﻿using System;
-using System.Runtime.Serialization;
-
-namespace SharpJackApi.Contracts
+﻿namespace SharpJackApi.Contracts
 {
     public class Answer
     {

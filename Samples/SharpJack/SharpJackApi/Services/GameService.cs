@@ -7,23 +7,9 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpJackApi.Data;
-using Microsoft.EntityFrameworkCore;
 
 namespace SharpJackApi.Services
 {
-    public static class GameContextExtensions
-    {
-        public static Task<Player> GetPlayerAsync(this GameContext context, int playerId, CancellationToken token)
-        {
-            return context.Players.FirstAsync(p => p.Id == playerId, token);
-        }
-
-        public static Task<Game> GetGameAsync(this GameContext context, int gameId, CancellationToken token)
-        {
-            return context.Games.FirstAsync(g => g.Id == gameId, token);
-        }
-    }
-
     public class GameService : IDisposable
     {
         const int MinimumPlayers = 2;
