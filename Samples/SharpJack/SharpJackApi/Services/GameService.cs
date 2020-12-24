@@ -6,6 +6,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using SharpJackApi.Data;
 
 namespace SharpJackApi.Services
 {
@@ -13,6 +14,7 @@ namespace SharpJackApi.Services
     {
         const int MinimumPlayers = 2;
         readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
+        readonly GameContext context;
         readonly List<Game> games = new List<Game>();
         readonly List<Player> players = new List<Player>();
         readonly TimeService timeService = new TimeService();
@@ -20,6 +22,11 @@ namespace SharpJackApi.Services
         public TimeService TimeService => timeService;
 
         public event EventHandler<Game> EvaluationCompleted;
+
+        public GameService(GameContext context)
+        {
+            this.context = context;
+        }
 
         public async Task<Player> AddPlayerAsync(string playerName)
         {
@@ -42,7 +49,7 @@ namespace SharpJackApi.Services
             }
 
             var game = new Game { Id = games.Count, Options = options, State = GameState.Created };
-            game.Players.Add(player.Id);
+            game.Players.Add(player);
             game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
             games.Add(game);
             return await Task.FromResult(game);
@@ -85,9 +92,9 @@ namespace SharpJackApi.Services
                 // done at the end to avoid race conditions with the engine which checks for this state
                 game.State = GameState.Active;
             }
-            else if (!game.Players.Contains(player.Id))
+            else if (!game.Players.Contains(player))
             {
-                game.Players.Add(player.Id);
+                game.Players.Add(player);
                 game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
             }
 
@@ -102,7 +109,7 @@ namespace SharpJackApi.Services
             }
 
             var game = games[gameId];
-            if (!game.Players.Contains(player.Id))
+            if (!game.Players.Contains(player))
             {
                 throw new InvalidOperationException("Not your game");
             }
@@ -133,7 +140,7 @@ namespace SharpJackApi.Services
             }
 
             var game = games[gameId];
-            if (!game.Players.Contains(question.PlayerId))
+            if (!game.Players.Exists(p => p.Id == question.PlayerId))
             {
                 throw new InvalidOperationException("Not your game");
             }
@@ -162,7 +169,7 @@ namespace SharpJackApi.Services
             }
 
             var game = games[gameId];
-            if (!game.Players.Contains(answer.PlayerId))
+            if (!game.Players.Exists(p => p.Id == answer.PlayerId))
             {
                 throw new InvalidOperationException("Not your game");
             }
@@ -236,13 +243,13 @@ namespace SharpJackApi.Services
                         }
 
                         // move to the next player
-                        game.ActivePlayer = game.Players[(game.ActivePlayer + 1) % game.Players.Count];
+                        game.ActivePlayer = game.Players[(game.ActivePlayer + 1) % game.Players.Count].Id;
 
                         // reset ActiveUntil
                         game.ActiveUntil = timeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
 
                         // advance to next round if necessary
-                        if (game.ActivePlayer == game.Players[0])
+                        if (game.ActivePlayer == game.Players[0].Id)
                         {
                             ++game.CurrentRound;
                         }

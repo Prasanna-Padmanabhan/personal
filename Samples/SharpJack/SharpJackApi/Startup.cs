@@ -1,5 +1,6 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.HttpsPolicy;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
@@ -42,6 +43,12 @@ namespace SharpJackApi
             app.UseHttpsRedirection();
 
             app.UseRouting();
+
+            app.Use(next => context =>
+            {
+                Console.WriteLine($"Found: {context.GetEndpoint()?.DisplayName}");
+                return next(context);
+            });
 
             app.UseAuthorization();
 

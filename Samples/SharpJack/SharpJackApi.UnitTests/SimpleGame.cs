@@ -7,11 +7,14 @@ using System;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Microsoft.EntityFrameworkCore;
+using SharpJackApi.Data;
 
 namespace SharpJackApi.UnitTests
 {
     public class SimpleGame : IDisposable
     {
+        private const string ConnectionString = "Server=(localdb)\\mssqllocaldb;Database=sharpjacktest;Trusted_Connection=True;MultipleActiveResultSets=true";
         private static Func<SimpleGame, Player, SimplePlayer> newSimplePlayer;
         private readonly GameService service;
         private CancellationTokenSource source;
@@ -21,7 +24,10 @@ namespace SharpJackApi.UnitTests
 
         private SimpleGame()
         {
-            service = new GameService();
+            var context = new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(ConnectionString).Options);
+            context.Database.EnsureDeleted();
+            context.Database.EnsureCreated();
+            service = new GameService(context);
             service.TimeService.CurrentTime = DateTime.UtcNow;
             // would ideally do nothing, but that would cause a busy loop, so just do enough to yield and not hammer CPU
             service.TimeService.SleepAction = span => Task.Yield();

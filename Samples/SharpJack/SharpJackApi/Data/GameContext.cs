@@ -1,9 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
 using SharpJackApi.Models;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
 
 namespace SharpJackApi.Data
 {
@@ -11,6 +7,13 @@ namespace SharpJackApi.Data
     {
         public GameContext(DbContextOptions<GameContext> options) : base(options)
         {
+        }
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.Entity<Game>().OwnsOne(g => g.Options);
+            modelBuilder.Entity<LeaderBoard>().OwnsOne(b => b.Rows);
+            base.OnModelCreating(modelBuilder);
         }
 
         public DbSet<Game> Games { get; set; }

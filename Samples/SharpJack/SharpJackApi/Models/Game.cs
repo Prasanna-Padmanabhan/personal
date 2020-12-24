@@ -19,7 +19,7 @@ namespace SharpJackApi.Models
 
         public DateTime ActiveUntil { get; set; }
 
-        public List<int> Players { get; set; }
+        public List<Player> Players { get; set; }
 
         public LeaderBoard Board { get; set; }
 
@@ -31,7 +31,7 @@ namespace SharpJackApi.Models
 
         public Game()
         {
-            Players = new List<int>();
+            Players = new List<Player>();
             Answers = new List<Answer>();
             Board = new LeaderBoard();
         }

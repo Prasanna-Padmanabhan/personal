@@ -5,6 +5,7 @@ using SharpJackApi.Models;
 using SharpJackApi.Services;
 using System.Threading;
 using System.Threading.Tasks;
+using SharpJackApi.Data;
 
 namespace SharpJackApi.Controllers
 {
@@ -12,12 +13,13 @@ namespace SharpJackApi.Controllers
     [Route("game")]
     public class GameController : ControllerBase
     {
-        private readonly GameService gameService = new GameService();
+        private readonly GameService gameService;
         private readonly ILogger<GameController> _logger;
 
-        public GameController(ILogger<GameController> logger)
+        public GameController(ILogger<GameController> logger, GameContext context)
         {
             _logger = logger;
+            gameService = new GameService(context);
             Task.Run(() => gameService.RunAsync(CancellationToken.None));
         }
 
@@ -29,7 +31,7 @@ namespace SharpJackApi.Controllers
         }
 
         [Route("players/{playerId}")]
-        [HttpPost]
+        [HttpGet]
         public async Task<Player> GetPlayerAsync([FromRoute] int playerId)
         {
             return await gameService.GetPlayerAsync(playerId);

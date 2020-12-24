@@ -1,4 +1,5 @@
 ﻿using System.Collections.Generic;
+using System.ComponentModel.DataAnnotations.Schema;
 
 namespace SharpJackApi.Models
 {
@@ -11,6 +12,9 @@ namespace SharpJackApi.Models
 
     public class LeaderBoard
     {
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
+
         public List<Row> Rows { get; set; }
 
         public LeaderBoard()
