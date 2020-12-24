@@ -20,69 +20,68 @@ namespace SharpJackApi.Controllers
         {
             _logger = logger;
             gameService = new GameService(context);
-            Task.Run(() => gameService.RunAsync(CancellationToken.None));
         }
 
         [Route("players")]
         [HttpPost]
-        public async Task<Player> AddPlayerAsync([FromBody] string playerName)
+        public Task<Player> AddPlayerAsync([FromBody] string playerName, CancellationToken token)
         {
-            return await gameService.AddPlayerAsync(playerName);
+            return gameService.AddPlayerAsync(playerName, token);
         }
 
         [Route("players/{playerId}")]
         [HttpGet]
-        public async Task<Player> GetPlayerAsync([FromRoute] int playerId)
+        public Task<Player> GetPlayerAsync([FromRoute] int playerId, CancellationToken token)
         {
-            return await gameService.GetPlayerAsync(playerId);
+            return gameService.GetPlayerAsync(playerId, token);
         }
 
         [HttpPost]
-        public async Task<Game> CreateGameAsync([FromBody] GameOptions options)
+        public Task<Game> CreateGameAsync([FromBody] GameOptions options, CancellationToken token)
         {
-            return await gameService.CreateGameAsync(options);
+            return gameService.CreateGameAsync(options, token);
         }
 
         [Route("{gameId}")]
         [HttpGet]
-        public async Task<Game> GetGameAsync([FromRoute] int gameId)
+        public Task<Game> GetGameAsync([FromRoute] int gameId, CancellationToken token)
         {
-            return await gameService.GetGameAsync(gameId);
+            return gameService.GetGameAsync(gameId, token);
         }
 
         [Route("{gameId}")]
         [HttpPut]
-        public async Task JoinOrStartGameAsync([FromRoute] int gameId, [FromBody] Player player)
+        public Task JoinOrStartGameAsync([FromRoute] int gameId, [FromBody] Player player, CancellationToken token)
         {
-            await gameService.JoinOrStartGameAsync(gameId, player);
+            return gameService.JoinOrStartGameAsync(gameId, player, token);
         }
 
         [Route("{gameId}/questions")]
         [HttpGet]
-        public async Task<Question> GetActiveQuestionAsync([FromRoute] int gameId, [FromBody] Player player)
+        public Task<Question> GetActiveQuestionAsync([FromRoute] int gameId, [FromBody] Player player, CancellationToken token)
         {
-            return await gameService.GetActiveQuestionAsync(gameId, player);
+            return gameService.GetActiveQuestionAsync(gameId, player, token);
         }
 
         [Route("{gameId}/questions")]
         [HttpPost]
-        public async Task AskQuestionAsync([FromRoute] int gameId, [FromBody] Question question)
+        public Task AskQuestionAsync([FromRoute] int gameId, [FromBody] Question question, CancellationToken token)
         {
-            await gameService.AskQuestionAsync(gameId, question);
+            return gameService.AskQuestionAsync(gameId, question, token);
         }
 
         [Route("{gameId}/questions")]
         [HttpPut]
-        public async Task<Answer> SubmitAnswerAsync([FromRoute] int gameId, [FromBody] Answer answer)
+        public Task<Answer> SubmitAnswerAsync([FromRoute] int gameId, [FromBody] Answer answer, CancellationToken token)
         {
-            return await gameService.SubmitAnswerAsync(gameId, answer);
+            return gameService.SubmitAnswerAsync(gameId, answer, token);
         }
 
         [Route("{gameId}/board")]
         [HttpGet]
-        public async Task<LeaderBoard> GetBoardAsync([FromRoute] int gameId)
+        public Task<LeaderBoard> GetBoardAsync([FromRoute] int gameId, CancellationToken token)
         {
-            return await gameService.GetBoardAsync(gameId);
+            return gameService.GetBoardAsync(gameId, token);
         }
     }
 }

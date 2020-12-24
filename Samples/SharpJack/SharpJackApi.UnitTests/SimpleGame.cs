@@ -6,7 +6,6 @@ using SharpJackApi.Services;
 using System;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Microsoft.EntityFrameworkCore;
 using SharpJackApi.Data;
 
@@ -16,9 +15,7 @@ namespace SharpJackApi.UnitTests
     {
         private const string ConnectionString = "Server=(localdb)\\mssqllocaldb;Database=sharpjacktest;Trusted_Connection=True;MultipleActiveResultSets=true";
         private static Func<SimpleGame, Player, SimplePlayer> newSimplePlayer;
-        private readonly GameService service;
-        private CancellationTokenSource source;
-        private Task engine;
+        private GameService service;
         private Game game;
         private Player creator;
 
@@ -29,11 +26,6 @@ namespace SharpJackApi.UnitTests
             context.Database.EnsureCreated();
             service = new GameService(context);
             service.TimeService.CurrentTime = DateTime.UtcNow;
-            // would ideally do nothing, but that would cause a busy loop, so just do enough to yield and not hammer CPU
-            service.TimeService.SleepAction = span => Task.Yield();
-            source = new CancellationTokenSource();
-            engine = Task.Run(() => service.RunAsync(source.Token));
-            service.EvaluationCompleted += Evaluation.OnEvaluationCompleted;
 
             // trigger static constructor
             SimplePlayer.Touch();
@@ -43,30 +35,30 @@ namespace SharpJackApi.UnitTests
         {
             var g = new SimpleGame();
 
-            g.creator = g.service.AddPlayerAsync(player).Result;
+            g.creator = g.service.AddPlayerAsync(player, CancellationToken.None).Result;
             var options = new GameOptions { PlayerId = g.creator.Id, MaxPlayers = maxPlayers, MaxQuestionTime = maxQuestionTime, MaxAnswerTime = maxAnswerTime, MaxRounds = maxRounds };
-            g.game = g.service.CreateGameAsync(options).Result;
+            g.game = g.service.CreateGameAsync(options, CancellationToken.None).Result;
 
             return (g, newSimplePlayer(g, g.creator));
         }
 
         public void Start()
         {
-            service.JoinOrStartGameAsync(game.Id, creator).Wait();
+            service.JoinOrStartGameAsync(game.Id, creator, CancellationToken.None).Wait();
             Assert.AreEqual(GameState.Active, game.State);
         }
 
         public SimplePlayer Join(string player)
         {
-            var p = service.AddPlayerAsync(player).Result;
-            service.JoinOrStartGameAsync(game.Id, p).Wait();
+            var p = service.AddPlayerAsync(player, CancellationToken.None).Result;
+            service.JoinOrStartGameAsync(game.Id, p, CancellationToken.None).Wait();
             Assert.AreEqual(GameState.Created, game.State);
             return newSimplePlayer(this, p);
         }
 
         public void Ask(Player player, string question, int answer)
         {
-            service.AskQuestionAsync(game.Id, new Question { PlayerId = player.Id, Title = question, Answer = answer }).Wait();
+            service.AskQuestionAsync(game.Id, new Question { PlayerId = player.Id, Title = question, Answer = answer }, CancellationToken.None).Wait();
             Assert.AreEqual(answer, game.ActiveQuestion.Answer);
             Assert.AreEqual(0, game.Answers.Count);
         }
@@ -74,7 +66,7 @@ namespace SharpJackApi.UnitTests
         public void Answer(Player player, int answer)
         {
             var count = game.Answers.Count;
-            var result = service.SubmitAnswerAsync(game.Id, new Answer { PlayerId = player.Id, Value = answer }).Result;
+            var result = service.SubmitAnswerAsync(game.Id, new Answer { PlayerId = player.Id, Value = answer }, CancellationToken.None).Result;
             Assert.AreEqual(count + 1, game.Answers.Count);
             Assert.AreEqual(answer, game.Answers[count].Value);
             Assert.AreEqual(player.Id, game.Answers[count].PlayerId);
@@ -88,12 +80,10 @@ namespace SharpJackApi.UnitTests
             {
                 // Advance the time so the game engine can evaluate results
                 service.TimeService.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime);
-
-                Evaluation.CompletedAsync(game.Id).Wait();
             }
 
             // Check if the leaderboard is updated
-            var board = service.GetBoardAsync(game.Id).Result;
+            var board = service.GetBoardAsync(game.Id, CancellationToken.None).Result;
             Assert.AreEqual(game.Players.Count, board.Rows.Count);
             Assert.AreEqual(score, board.Rows.First(r => r.PlayerId == player.Id).PlayerScore);
         }
@@ -101,22 +91,14 @@ namespace SharpJackApi.UnitTests
         public void End()
         {
             Assert.AreEqual(GameState.Completed, game.State);
-            source.Cancel();
-            engine.Wait();
         }
 
         public void Dispose()
         {
-            if (engine != null)
+            if (service != null)
             {
-                engine.Dispose();
-                engine = null;
-            }
-
-            if (source != null)
-            {
-                source.Dispose();
-                source = null;
+                service.Dispose();
+                service = null;
             }
         }
 

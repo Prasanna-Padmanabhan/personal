@@ -7,67 +7,70 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using SharpJackApi.Data;
+using Microsoft.EntityFrameworkCore;
 
 namespace SharpJackApi.Services
 {
-    public class GameService
+    public static class GameContextExtensions
+    {
+        public static Task<Player> GetPlayerAsync(this GameContext context, int playerId, CancellationToken token)
+        {
+            return context.Players.FirstAsync(p => p.Id == playerId, token);
+        }
+
+        public static Task<Game> GetGameAsync(this GameContext context, int gameId, CancellationToken token)
+        {
+            return context.Games.FirstAsync(g => g.Id == gameId, token);
+        }
+    }
+
+    public class GameService : IDisposable
     {
         const int MinimumPlayers = 2;
-        readonly TimeSpan OneSecond = TimeSpan.FromSeconds(1);
-        readonly GameContext context;
-        readonly List<Game> games = new List<Game>();
-        readonly List<Player> players = new List<Player>();
-        readonly TimeService timeService = new TimeService();
 
-        public TimeService TimeService => timeService;
+        GameContext context;
 
-        public event EventHandler<Game> EvaluationCompleted;
+        public TimeService TimeService { get; private set; }
 
         public GameService(GameContext context)
         {
             this.context = context;
+            TimeService = new TimeService();
         }
 
-        public async Task<Player> AddPlayerAsync(string playerName)
+        public async Task<Player> AddPlayerAsync(string playerName, CancellationToken token)
         {
-            var player = new Player { Id = players.Count, Name = playerName };
-            players.Add(player);
-            return await Task.FromResult(player);
+            var player = await context.Players.AddAsync(new Player { Name = playerName }, token);
+            await context.SaveChangesAsync(token);
+            return player.Entity;
         }
 
-        public async Task<Player> GetPlayerAsync(int playerId)
+        public Task<Player> GetPlayerAsync(int playerId, CancellationToken token)
         {
-            return await Task.FromResult(players[playerId]);
+            return context.GetPlayerAsync(playerId, token);
         }
 
-        public async Task<Game> CreateGameAsync(GameOptions options)
+        public async Task<Game> CreateGameAsync(GameOptions options, CancellationToken token)
         {
-            var player = players.FirstOrDefault(p => p.Id == options.PlayerId);
-            if (player == null)
-            {
-                throw new InvalidOperationException("Player not found");
-            }
-
-            var game = new Game { Id = games.Count, Options = options, State = GameState.Created };
+            var player = await context.GetPlayerAsync(options.PlayerId, token);
+            var game = new Game { Options = options, State = GameState.Created };
             game.Players.Add(player);
             game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
-            games.Add(game);
-            return await Task.FromResult(game);
+            var g = await context.Games.AddAsync(game, token);
+            await context.SaveChangesAsync(token);
+            return g.Entity;
         }
 
-        public async Task<Game> GetGameAsync(int gameId)
+        public Task<Game> GetGameAsync(int gameId, CancellationToken token)
         {
-            return await Task.FromResult(games[gameId]);
+            return context.GetGameAsync(gameId, token);
         }
 
-        public async Task JoinOrStartGameAsync(int gameId, Player player)
+        public async Task JoinOrStartGameAsync(int gameId, Player player, CancellationToken token)
         {
-            if (players.FirstOrDefault(p => p.Id == player.Id) == null)
-            {
-                throw new InvalidOperationException("Player not found");
-            }
+            player = await context.GetPlayerAsync(player.Id, token);
 
-            var game = games[gameId];
+            var game = await context.GetGameAsync(gameId, token);
             if (game.State == GameState.Completed)
             {
                 throw new InvalidOperationException("Game over");
@@ -85,7 +88,7 @@ namespace SharpJackApi.Services
                 }
 
                 game.ActivePlayer = player.Id;
-                game.ActiveUntil = timeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
+                game.ActiveUntil = TimeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
                 game.ActiveQuestion = null;
                 game.Answers.Clear();
                 game.CurrentRound = 0;
@@ -98,17 +101,14 @@ namespace SharpJackApi.Services
                 game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
             }
 
-            await Task.CompletedTask;
+            await context.SaveChangesAsync(token);
         }
 
-        public async Task<Question> GetActiveQuestionAsync(int gameId, Player player)
+        public async Task<Question> GetActiveQuestionAsync(int gameId, Player player, CancellationToken token)
         {
-            if (players.FirstOrDefault(p => p.Id == player.Id) == null)
-            {
-                throw new InvalidOperationException("Player not found");
-            }
+            player = await context.GetPlayerAsync(player.Id, token);
 
-            var game = games[gameId];
+            var game = await context.GetGameAsync(gameId, token);
             if (!game.Players.Contains(player))
             {
                 throw new InvalidOperationException("Not your game");
@@ -124,22 +124,15 @@ namespace SharpJackApi.Services
                 throw new KeyNotFoundException("No active question");
             }
 
-            var now = timeService.CurrentTime;
-
-            // only return the answer after the time has elapsed
-            var result = now < game.ActiveUntil ? new Question { Title = question.Title } : question;
-
-            return await Task.FromResult(result);
+            return new Question { Title = question.Title };
         }
 
-        public async Task AskQuestionAsync(int gameId, Question question)
+        public async Task AskQuestionAsync(int gameId, Question question, CancellationToken token)
         {
-            if (players.FirstOrDefault(p => p.Id == question.PlayerId) == null)
-            {
-                throw new InvalidOperationException("Player not found");
-            }
+            var player = await context.GetPlayerAsync(question.PlayerId, token);
 
-            var game = games[gameId];
+            var game = await context.GetGameAsync(gameId, token);
+
             if (!game.Players.Exists(p => p.Id == question.PlayerId))
             {
                 throw new InvalidOperationException("Not your game");
@@ -149,7 +142,7 @@ namespace SharpJackApi.Services
                 throw new InvalidOperationException("Not an active game");
             }
 
-            var now = timeService.CurrentTime;
+            var now = TimeService.CurrentTime;
             if (game.ActivePlayer != question.PlayerId || now > game.ActiveUntil)
             {
                 throw new InvalidOperationException("Not your turn");
@@ -158,17 +151,15 @@ namespace SharpJackApi.Services
             game.ActiveQuestion = question;
             game.ActiveUntil = now.AddSeconds(game.Options.MaxAnswerTime);
 
-            await Task.CompletedTask;
+            await context.SaveChangesAsync(token);
         }
 
-        public async Task<Answer> SubmitAnswerAsync(int gameId, Answer answer)
+        public async Task<Answer> SubmitAnswerAsync(int gameId, Answer answer, CancellationToken token)
         {
-            if (players.FirstOrDefault(p => p.Id == answer.PlayerId) == null)
-            {
-                throw new InvalidOperationException("Player not found");
-            }
+            var player = await context.GetPlayerAsync(answer.PlayerId, token);
 
-            var game = games[gameId];
+            var game = await context.GetGameAsync(gameId, token);
+
             if (!game.Players.Exists(p => p.Id == answer.PlayerId))
             {
                 throw new InvalidOperationException("Not your game");
@@ -178,7 +169,7 @@ namespace SharpJackApi.Services
                 throw new InvalidOperationException("Not an active game");
             }
 
-            var now = timeService.CurrentTime;
+            var now = TimeService.CurrentTime;
             if (game.ActivePlayer != answer.PlayerId)
             {
                 if (now > game.ActiveUntil)
@@ -192,81 +183,88 @@ namespace SharpJackApi.Services
                 }
             }
 
+            await context.SaveChangesAsync(token);
+
             // return the correct answer
-            var result = new Answer { PlayerId = game.ActivePlayer, Value = game.ActiveQuestion.Answer };
-
-            return await Task.FromResult(result);
+            return new Answer { PlayerId = game.ActivePlayer, Value = game.ActiveQuestion.Answer };
         }
 
-        public async Task<LeaderBoard> GetBoardAsync(int gameId)
+        public async Task<LeaderBoard> GetBoardAsync(int gameId, CancellationToken token)
         {
-            return await Task.FromResult(games[gameId].Board);
+            await EvaluateAsync(token);
+            var g = await context.GetGameAsync(gameId, token);
+            return g.Board;
         }
 
-        public Task RunAsync(CancellationToken token)
+        public async Task EvaluateAsync(CancellationToken token)
         {
-            while (!token.IsCancellationRequested)
+            await foreach (var game in context.Games.AsAsyncEnumerable())
             {
-                timeService.Sleep(OneSecond);
-                foreach (var game in games)
+                // time to evaluate
+                if (game.State == GameState.Active && TimeService.CurrentTime >= game.ActiveUntil)
                 {
-                    // time to evaluate
-                    if (game.State == GameState.Active && timeService.CurrentTime >= game.ActiveUntil)
+                    // time to evaluate answers to the active question
+                    if (game.ActiveQuestion != null)
                     {
-                        // time to evaluate answers to the active question
-                        if (game.ActiveQuestion != null)
+                        // evaluate answers and assign scores
+                        var orderedAnswers = game.Answers.OrderBy(a => Math.Abs(a.Value - game.ActiveQuestion.Answer));
+                        int count = game.Answers.Count;
+                        foreach (var answer in orderedAnswers)
                         {
-                            // evaluate answers and assign scores
-                            var orderedAnswers = game.Answers.OrderBy(a => Math.Abs(a.Value - game.ActiveQuestion.Answer));
-                            int count = game.Answers.Count;
-                            foreach (var answer in orderedAnswers)
+                            answer.Score = count + (int)(game.ActiveUntil - answer.SubmitTime).TotalSeconds;
+                            --count;
+                        }
+
+                        // update leaderboard
+                        foreach (var row in game.Board.Rows)
+                        {
+                            // except for the person asking the question
+                            if (row.PlayerId != game.ActivePlayer)
                             {
-                                answer.Score = count + (int)(game.ActiveUntil - answer.SubmitTime).TotalSeconds;
-                                --count;
+                                row.PlayerScore += orderedAnswers.First(a => a.PlayerId == row.PlayerId).Score;
                             }
-
-                            // update leaderboard
-                            foreach (var row in game.Board.Rows)
-                            {
-                                // except for the person asking the question
-                                if (row.PlayerId != game.ActivePlayer)
-                                {
-                                    row.PlayerScore += orderedAnswers.First(a => a.PlayerId == row.PlayerId).Score;
-                                }
-                            }
-
-                            // clear existing answers
-                            game.Answers.Clear();
-
-                            // reset active question
-                            game.ActiveQuestion = null;
                         }
 
-                        // move to the next player
-                        game.ActivePlayer = game.Players[(game.ActivePlayer + 1) % game.Players.Count].Id;
+                        // clear existing answers
+                        game.Answers.Clear();
 
-                        // reset ActiveUntil
-                        game.ActiveUntil = timeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
+                        // reset active question
+                        game.ActiveQuestion = null;
+                    }
 
-                        // advance to next round if necessary
-                        if (game.ActivePlayer == game.Players[0].Id)
-                        {
-                            ++game.CurrentRound;
-                        }
+                    // get the position of the current player
+                    var index = game.Players.FindIndex(p => p.Id == game.ActivePlayer);
 
-                        // set Game to completed state if necessary
-                        if (game.CurrentRound == game.Options.MaxRounds)
-                        {
-                            game.State = GameState.Completed;
-                        }
+                    // move to the next player
+                    game.ActivePlayer = game.Players[(index + 1) % game.Players.Count].Id;
 
-                        // signal that the evaluation is now complete
-                        EvaluationCompleted?.Invoke(this, game);
+                    // reset ActiveUntil
+                    game.ActiveUntil = TimeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
+
+                    // advance to next round if necessary
+                    if (game.ActivePlayer == game.Players[0].Id)
+                    {
+                        ++game.CurrentRound;
+                    }
+
+                    // set Game to completed state if necessary
+                    if (game.CurrentRound == game.Options.MaxRounds)
+                    {
+                        game.State = GameState.Completed;
                     }
                 }
             }
 
-            return Task.CompletedTask;
+            await context.SaveChangesAsync(token);
+        }
+
+        public void Dispose()
+        {
+            if (context != null)
+            {
+                context.Dispose();
+                context = null;
+            }
         }
     }
 }

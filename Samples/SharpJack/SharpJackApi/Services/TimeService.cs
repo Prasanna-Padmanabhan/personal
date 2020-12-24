@@ -18,19 +18,5 @@ namespace SharpJackApi.Services
                 currentTime = value;
             }
         }
-
-        public Action<TimeSpan> SleepAction { get; set; }
-
-        public void Sleep(TimeSpan span)
-        {
-            if (SleepAction != null)
-            {
-                SleepAction(span);
-            }
-            else
-            {
-                Thread.Sleep(span);
-            }
-        }
     }
 }
