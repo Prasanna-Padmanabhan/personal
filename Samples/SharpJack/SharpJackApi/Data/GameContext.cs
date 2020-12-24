@@ -19,11 +19,5 @@ namespace SharpJackApi.Data
         public DbSet<Game> Games { get; set; }
 
         public DbSet<Player> Players { get; set; }
-
-        public DbSet<Question> Questions { get; set; }
-
-        public DbSet<Answer> Answers { get; set; }
-
-        public DbSet<LeaderBoard> Boards { get; set; }
     }
 }
