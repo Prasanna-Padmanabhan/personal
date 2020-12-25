@@ -1,62 +1,129 @@
-﻿using GameOptions = SharpJackApi.Contracts.GameOptions;
-using GameState = SharpJackApi.Contracts.GameState;
+﻿using SharpJackApi.Data;
 using SharpJackApi.Models;
+using SharpJackApi.Utilities;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using SharpJackApi.Data;
+using GameOptions = SharpJackApi.Contracts.GameOptions;
+using GameState = SharpJackApi.Contracts.GameState;
+
+// needed by unit tests to access GameContext
+[assembly: InternalsVisibleTo("SharpJackApi.UnitTests")]
 
 namespace SharpJackApi.Services
 {
+    /// <summary>
+    /// Contains the business logic of the game.
+    /// </summary>
+    /// <remarks>
+    /// This is implemented separately from the controller so it can be unit tested thoroughly in isolation.
+    /// </remarks>
     public class GameService : IDisposable
     {
+        /// <summary>
+        /// Minimum number of players for a game.
+        /// </summary>
         const int MinimumPlayers = 2;
 
-        GameContext context;
+        /// <summary>
+        /// The database context to use to read/write state.
+        /// </summary>
+        /// <remarks>
+        /// This is accessed by unit tests to do validation.
+        /// </remarks>
+        internal GameContext Context { get; private set; }
 
-        public TimeService TimeService { get; private set; }
+        /// <summary>
+        /// The time service to use to keep track of time.
+        /// </summary>
+        /// <remarks>
+        /// This abstraction is introduced so tests can manipulate current time for predictable results.
+        /// </remarks>
+        internal TimeService TimeService { get; private set; }
 
+        /// <summary>
+        /// Initialize with the given context.
+        /// </summary>
+        /// <param name="context">The database context.</param>
         public GameService(GameContext context)
         {
-            this.context = context;
+            Context = context;
             TimeService = new TimeService();
         }
 
-        public async Task<Player> AddPlayerAsync(string playerName, CancellationToken token)
+        /// <summary>
+        /// Add a new player.
+        /// </summary>
+        /// <param name="playerName">The name of the player to add.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The newly added player.</returns>
+        public async Task<Contracts.Player> AddPlayerAsync(string playerName, CancellationToken token)
         {
-            var player = await context.Players.AddAsync(new Player { Name = playerName }, token);
-            await context.SaveChangesAsync(token);
-            return player.Entity;
+            var player = await Context.Players.AddAsync(new Player { Name = playerName }, token);
+            await Context.SaveChangesAsync(token);
+            return player.Entity.ToContract();
         }
 
-        public Task<Player> GetPlayerAsync(int playerId, CancellationToken token)
+        /// <summary>
+        /// Get details of a given player.
+        /// </summary>
+        /// <param name="playerId">The ID of the player to fetch.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The player asked for.</returns>
+        public async Task<Contracts.Player> GetPlayerAsync(int playerId, CancellationToken token)
         {
-            return context.GetPlayerAsync(playerId, token);
+            var p = await Context.GetPlayerAsync(playerId, token);
+            return p.ToContract();
         }
 
-        public async Task<Game> CreateGameAsync(GameOptions options, CancellationToken token)
+        /// <summary>
+        /// Creates a new game.
+        /// </summary>
+        /// <param name="options">The options for the game.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The newly created game.</returns>
+        public async Task<Contracts.Game> CreateGameAsync(GameOptions options, CancellationToken token)
         {
-            var player = await context.GetPlayerAsync(options.PlayerId, token);
+            var player = await Context.GetPlayerAsync(options.PlayerId, token);
             var game = new Game { Options = options, State = GameState.Created };
             game.Players.Add(player);
-            game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
-            var g = await context.Games.AddAsync(game, token);
-            await context.SaveChangesAsync(token);
-            return g.Entity;
+            game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerName = player.Name, PlayerScore = 0 });
+            var g = await Context.Games.AddAsync(game, token);
+            await Context.SaveChangesAsync(token);
+            return g.Entity.ToContract();
         }
 
-        public Task<Game> GetGameAsync(int gameId, CancellationToken token)
+        /// <summary>
+        /// Get details of a given game.
+        /// </summary>
+        /// <param name="gameId">The ID of the game to fetch.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The game asked for.</returns>
+        public async Task<Contracts.Game> GetGameAsync(int gameId, CancellationToken token)
         {
-            return context.GetGameAsync(gameId, token);
+            var g = await Context.GetGameAsync(gameId, token);
+            return g.ToContract();
         }
 
-        public async Task JoinOrStartGameAsync(int gameId, Player player, CancellationToken token)
+        /// <summary>
+        /// Join or start an existing game.
+        /// </summary>
+        /// <remarks>
+        /// If this is called by the player who created the game, then the game will be started (and state will become Active).
+        /// If this is called by any other player, then the player will be added to the game (i.e. joined) and the state will remain Created.
+        /// </remarks>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="player">The player joining or starting the game.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>Nothing</returns>
+        public async Task JoinOrStartGameAsync(int gameId, Contracts.Player player, CancellationToken token)
         {
-            player = await context.GetPlayerAsync(player.Id, token);
+            var p = await Context.GetPlayerAsync(player.Id, token);
 
-            var game = await context.GetGameAsync(gameId, token);
+            var game = await Context.GetGameAsync(gameId, token);
             if (game.State == GameState.Completed)
             {
                 throw new InvalidOperationException("Game over");
@@ -65,7 +132,7 @@ namespace SharpJackApi.Services
             {
                 throw new InvalidOperationException("Game full");
             }
-            else if (game.Options.PlayerId == player.Id)
+            else if (game.Options.PlayerId == p.Id)
             {
                 // can't start a game without minimum players
                 if (game.Players.Count < MinimumPlayers)
@@ -73,29 +140,35 @@ namespace SharpJackApi.Services
                     throw new InvalidOperationException("Too few players");
                 }
 
-                game.ActivePlayer = player.Id;
+                game.ActivePlayer = p.Id;
                 game.ActiveUntil = TimeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
                 game.ActiveQuestion = null;
                 game.Answers.Clear();
                 game.CurrentRound = 0;
-                // done at the end to avoid race conditions with the engine which checks for this state
                 game.State = GameState.Active;
             }
-            else if (!game.Players.Contains(player))
+            else if (!game.Players.Contains(p))
             {
-                game.Players.Add(player);
-                game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerScore = 0 });
+                game.Players.Add(p);
+                game.Board.Rows.Add(new Row { PlayerId = p.Id, PlayerName = p.Name, PlayerScore = 0 });
             }
 
-            await context.SaveChangesAsync(token);
+            await Context.SaveChangesAsync(token);
         }
 
-        public async Task<Question> GetActiveQuestionAsync(int gameId, Player player, CancellationToken token)
+        /// <summary>
+        /// Get the currently active question of a given game.
+        /// </summary>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="player">The player requesting the question.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The active question.</returns>
+        public async Task<Contracts.Question> GetActiveQuestionAsync(int gameId, Contracts.Player player, CancellationToken token)
         {
-            player = await context.GetPlayerAsync(player.Id, token);
+            var p = await Context.GetPlayerAsync(player.Id, token);
 
-            var game = await context.GetGameAsync(gameId, token);
-            if (!game.Players.Contains(player))
+            var game = await Context.GetGameAsync(gameId, token);
+            if (!game.Players.Contains(p))
             {
                 throw new InvalidOperationException("Not your game");
             }
@@ -110,14 +183,21 @@ namespace SharpJackApi.Services
                 throw new KeyNotFoundException("No active question");
             }
 
-            return new Question { Title = question.Title };
+            return new Contracts.Question { Title = question.Title };
         }
 
-        public async Task AskQuestionAsync(int gameId, Question question, CancellationToken token)
+        /// <summary>
+        /// Submit a new question to the game.
+        /// </summary>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="question">The question being asked.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>Nothing</returns>
+        public async Task AskQuestionAsync(int gameId, Contracts.Question question, CancellationToken token)
         {
-            var player = await context.GetPlayerAsync(question.PlayerId, token);
+            var player = await Context.GetPlayerAsync(question.PlayerId, token);
 
-            var game = await context.GetGameAsync(gameId, token);
+            var game = await Context.GetGameAsync(gameId, token);
 
             if (!game.Players.Exists(p => p.Id == question.PlayerId))
             {
@@ -134,17 +214,27 @@ namespace SharpJackApi.Services
                 throw new InvalidOperationException("Not your turn");
             }
 
-            game.ActiveQuestion = question;
+            game.ActiveQuestion = question.ToModel();
             game.ActiveUntil = now.AddSeconds(game.Options.MaxAnswerTime);
 
-            await context.SaveChangesAsync(token);
+            await Context.SaveChangesAsync(token);
         }
 
-        public async Task<Answer> SubmitAnswerAsync(int gameId, Answer answer, CancellationToken token)
+        /// <summary>
+        /// Submit an answer to the currently active question.
+        /// </summary>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="answer">The answer.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The correct answer.</returns>
+        /// <remarks>
+        /// Since this method will return the correct answer, it implies that a player can only submit one answer to a question.
+        /// </remarks>
+        public async Task<Contracts.Answer> SubmitAnswerAsync(int gameId, Contracts.Answer answer, CancellationToken token)
         {
-            var player = await context.GetPlayerAsync(answer.PlayerId, token);
+            var player = await Context.GetPlayerAsync(answer.PlayerId, token);
 
-            var game = await context.GetGameAsync(gameId, token);
+            var game = await Context.GetGameAsync(gameId, token);
 
             if (!game.Players.Exists(p => p.Id == answer.PlayerId))
             {
@@ -164,27 +254,40 @@ namespace SharpJackApi.Services
                 }
                 else
                 {
-                    answer.SubmitTime = now;
-                    game.Answers.Add(answer);
+                    // TODO: enforce only one answer per player per question
+                    var a = answer.ToModel();
+                    a.SubmitTime = now;
+                    game.Answers.Add(a);
                 }
             }
 
-            await context.SaveChangesAsync(token);
+            await Context.SaveChangesAsync(token);
 
             // return the correct answer
-            return new Answer { PlayerId = game.ActivePlayer, Value = game.ActiveQuestion.Answer };
+            return new Contracts.Answer { PlayerId = game.ActivePlayer, Value = game.ActiveQuestion.Answer };
         }
 
-        public async Task<LeaderBoard> GetBoardAsync(int gameId, CancellationToken token)
+        /// <summary>
+        /// Get the leader board for a given game.
+        /// </summary>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The leader board.</returns>
+        public async Task<Contracts.LeaderBoard> GetBoardAsync(int gameId, CancellationToken token)
         {
             await EvaluateAsync(token);
-            var g = await context.GetGameAsync(gameId, token);
-            return g.Board;
+            var g = await Context.GetGameAsync(gameId, token);
+            return g.Board.ToContract();
         }
 
+        /// <summary>
+        /// The game engine evaluating the answers and computing scores.
+        /// </summary>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>Nothing</returns>
         public async Task EvaluateAsync(CancellationToken token)
         {
-            await foreach (var game in context.Games.AsAsyncEnumerable())
+            await foreach (var game in Context.Games.AsAsyncEnumerable())
             {
                 // time to evaluate
                 if (game.State == GameState.Active && TimeService.CurrentTime >= game.ActiveUntil)
@@ -241,15 +344,18 @@ namespace SharpJackApi.Services
                 }
             }
 
-            await context.SaveChangesAsync(token);
+            await Context.SaveChangesAsync(token);
         }
 
+        /// <summary>
+        /// Release resources.
+        /// </summary>
         public void Dispose()
         {
-            if (context != null)
+            if (Context != null)
             {
-                context.Dispose();
-                context = null;
+                Context.Dispose();
+                Context = null;
             }
         }
     }

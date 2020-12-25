@@ -8,7 +8,7 @@ namespace SharpJackApi.UnitTests
         [TestMethod]
         public void TwoPlayers()
         {
-            (var game, var ben) = SimpleGame.Create("Benjamin Sisko", 2);
+            (var game, var ben) = TestGame.Create("Benjamin Sisko", 2);
             using (game)
             {
                 var jake = game.Join("Jake Sisko");
@@ -29,7 +29,7 @@ namespace SharpJackApi.UnitTests
         [TestMethod]
         public void ManyPlayers()
         {
-            (var game, var frasier) = SimpleGame.Create("Frasier Crane", 5);
+            (var game, var frasier) = TestGame.Create("Frasier Crane", 5);
             using (game)
             {
                 var niles = game.Join("Niles Crane");
