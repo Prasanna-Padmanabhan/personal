@@ -275,72 +275,70 @@ namespace SharpJackApi.Services
         /// <returns>The leader board.</returns>
         public async Task<Contracts.LeaderBoard> GetBoardAsync(int gameId, CancellationToken token)
         {
-            await EvaluateAsync(token);
             var g = await Context.GetGameAsync(gameId, token);
+            await EvaluateAsync(g, token);
             return g.Board.ToContract();
         }
 
         /// <summary>
         /// The game engine evaluating the answers and computing scores.
         /// </summary>
+        /// <param name="game">The game to evaluate.</param>
         /// <param name="token">The cancellation token.</param>
         /// <returns>Nothing</returns>
-        public async Task EvaluateAsync(CancellationToken token)
+        public async Task EvaluateAsync(Game game, CancellationToken token)
         {
-            await foreach (var game in Context.Games.AsAsyncEnumerable())
+            // time to evaluate
+            if (game.State == GameState.Active && TimeService.CurrentTime >= game.ActiveUntil)
             {
-                // time to evaluate
-                if (game.State == GameState.Active && TimeService.CurrentTime >= game.ActiveUntil)
+                // time to evaluate answers to the active question
+                if (game.ActiveQuestion != null)
                 {
-                    // time to evaluate answers to the active question
-                    if (game.ActiveQuestion != null)
+                    // evaluate answers and assign scores
+                    var orderedAnswers = game.Answers.OrderBy(a => Math.Abs(a.Value - game.ActiveQuestion.Answer));
+                    int count = game.Answers.Count;
+                    foreach (var answer in orderedAnswers)
                     {
-                        // evaluate answers and assign scores
-                        var orderedAnswers = game.Answers.OrderBy(a => Math.Abs(a.Value - game.ActiveQuestion.Answer));
-                        int count = game.Answers.Count;
-                        foreach (var answer in orderedAnswers)
+                        answer.Score = count + (int)(game.ActiveUntil - answer.SubmitTime).TotalSeconds;
+                        --count;
+                    }
+
+                    // update leaderboard
+                    foreach (var row in game.Board.Rows)
+                    {
+                        // except for the person asking the question
+                        if (row.PlayerId != game.ActivePlayer)
                         {
-                            answer.Score = count + (int)(game.ActiveUntil - answer.SubmitTime).TotalSeconds;
-                            --count;
+                            row.PlayerScore += orderedAnswers.First(a => a.PlayerId == row.PlayerId).Score;
                         }
-
-                        // update leaderboard
-                        foreach (var row in game.Board.Rows)
-                        {
-                            // except for the person asking the question
-                            if (row.PlayerId != game.ActivePlayer)
-                            {
-                                row.PlayerScore += orderedAnswers.First(a => a.PlayerId == row.PlayerId).Score;
-                            }
-                        }
-
-                        // clear existing answers
-                        game.Answers.Clear();
-
-                        // reset active question
-                        game.ActiveQuestion = null;
                     }
 
-                    // get the position of the current player
-                    var index = game.Players.FindIndex(p => p.Id == game.ActivePlayer);
+                    // clear existing answers
+                    game.Answers.Clear();
 
-                    // move to the next player
-                    game.ActivePlayer = game.Players[(index + 1) % game.Players.Count].Id;
+                    // reset active question
+                    game.ActiveQuestion = null;
+                }
 
-                    // reset ActiveUntil
-                    game.ActiveUntil = TimeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
+                // get the position of the current player
+                var index = game.Players.FindIndex(p => p.Id == game.ActivePlayer);
 
-                    // advance to next round if necessary
-                    if (game.ActivePlayer == game.Players[0].Id)
-                    {
-                        ++game.CurrentRound;
-                    }
+                // move to the next player
+                game.ActivePlayer = game.Players[(index + 1) % game.Players.Count].Id;
 
-                    // set Game to completed state if necessary
-                    if (game.CurrentRound == game.Options.MaxRounds)
-                    {
-                        game.State = GameState.Completed;
-                    }
+                // reset ActiveUntil
+                game.ActiveUntil = TimeService.CurrentTime.AddSeconds(game.Options.MaxQuestionTime);
+
+                // advance to next round if necessary
+                if (game.ActivePlayer == game.Players[0].Id)
+                {
+                    ++game.CurrentRound;
+                }
+
+                // set Game to completed state if necessary
+                if (game.CurrentRound == game.Options.MaxRounds)
+                {
+                    game.State = GameState.Completed;
                 }
             }
 
