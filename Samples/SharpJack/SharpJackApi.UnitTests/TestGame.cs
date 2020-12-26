@@ -62,7 +62,7 @@ namespace SharpJackApi.UnitTests
             var context = new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(ConnectionString).Options);
             context.Database.EnsureDeleted();
             context.Database.EnsureCreated();
-            service = new GameService(context);
+            service = new GameService(context, null);
             service.TimeService.CurrentTime = DateTime.UtcNow;
 
             // trigger static constructor

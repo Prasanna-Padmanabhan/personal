@@ -7,6 +7,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpJackApi", "SharpJackAp
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SharpJackApi.UnitTests", "SharpJackApi.UnitTests\SharpJackApi.UnitTests.csproj", "{787D8D35-6655-404D-92BB-DB141838EC6D}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SharpJackApi.IntegrationTests", "SharpJackApi.IntegrationTests\SharpJackApi.IntegrationTests.csproj", "{1A64B97C-82A2-4A26-B4C2-FDCCBBE8C6C7}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{787D8D35-6655-404D-92BB-DB141838EC6D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{787D8D35-6655-404D-92BB-DB141838EC6D}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{787D8D35-6655-404D-92BB-DB141838EC6D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1A64B97C-82A2-4A26-B4C2-FDCCBBE8C6C7}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1A64B97C-82A2-4A26-B4C2-FDCCBBE8C6C7}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1A64B97C-82A2-4A26-B4C2-FDCCBBE8C6C7}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1A64B97C-82A2-4A26-B4C2-FDCCBBE8C6C7}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

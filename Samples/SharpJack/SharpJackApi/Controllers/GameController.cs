@@ -27,7 +27,7 @@ namespace SharpJackApi.Controllers
         public GameController(ILogger<GameController> logger, GameContext context)
         {
             _logger = logger;
-            gameService = new GameService(context);
+            gameService = new GameService(context, logger);
         }
 
         /// <summary>
@@ -36,7 +36,7 @@ namespace SharpJackApi.Controllers
         /// <param name="playerName">The name of the player to add.</param>
         /// <param name="token">The cancellation token.</param>
         /// <returns>The newly added player.</returns>
-        [Route("players")]
+        [Route("~/players")]
         [HttpPost]
         public Task<Player> AddPlayerAsync([FromBody] string playerName, CancellationToken token)
         {
@@ -49,7 +49,7 @@ namespace SharpJackApi.Controllers
         /// <param name="playerId">The ID of the player to fetch.</param>
         /// <param name="token">The cancellation token.</param>
         /// <returns>The player asked for.</returns>
-        [Route("players/{playerId}")]
+        [Route("~/players/{playerId}")]
         [HttpGet]
         public Task<Player> GetPlayerAsync([FromRoute] int playerId, CancellationToken token)
         {

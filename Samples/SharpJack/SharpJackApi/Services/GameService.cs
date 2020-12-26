@@ -1,4 +1,5 @@
-﻿using SharpJackApi.Data;
+﻿using Microsoft.Extensions.Logging;
+using SharpJackApi.Data;
 using SharpJackApi.Models;
 using SharpJackApi.Utilities;
 using System;
@@ -44,14 +45,17 @@ namespace SharpJackApi.Services
         /// </remarks>
         internal TimeService TimeService { get; private set; }
 
+        private readonly ILogger logger;
+
         /// <summary>
         /// Initialize with the given context.
         /// </summary>
         /// <param name="context">The database context.</param>
-        public GameService(GameContext context)
+        public GameService(GameContext context, ILogger logger)
         {
             Context = context;
             TimeService = new TimeService();
+            this.logger = logger;
         }
 
         /// <summary>
