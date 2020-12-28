@@ -60,6 +60,7 @@ bld/
 *.pubxml
 *.publishproj
 *.arm.json
+serviceDependencies*.json
 
 # NuGet Packages
 *.nupkg
