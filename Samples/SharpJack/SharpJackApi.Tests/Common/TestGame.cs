@@ -1,13 +1,12 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpJackApi.Contracts;
 using SharpJackApi.Data;
-using SharpJackApi.Services;
+using SharpJackApi.Interfaces;
 using System;
 using System.Linq;
 using System.Threading;
 
-namespace SharpJackApi.UnitTests
+namespace SharpJackApi.Tests
 {
     /// <summary>
     /// Represents a simplified version of the game used for testing.
@@ -17,17 +16,8 @@ namespace SharpJackApi.UnitTests
     /// as appropriate after each step to minimize the actual test code
     /// and make it more readable.
     /// </remarks>
-    public class TestGame : IDisposable
+    public class TestGame<TClient> : IDisposable where TClient : IDisposable, IGameClient, new()
     {
-        /// <summary>
-        /// Database connection string.
-        /// </summary>
-        /// <remarks>
-        /// Tests are executed against a real database (SQL Express LocalDB) to make sure EF Core + LINQ
-        /// commands will work as closely to a production database as possible.
-        /// </remarks>
-        private const string ConnectionString = "Server=(localdb)\\mssqllocaldb;Database=sharpjacktest;Trusted_Connection=True;MultipleActiveResultSets=true";
-
         /// <summary>
         /// Delegate used to construct an instance of a TestPlayer.
         /// </summary>
@@ -36,12 +26,17 @@ namespace SharpJackApi.UnitTests
         /// and this is the easiest way to simulate that.
         /// </remarks>
         /// <seealso cref="TestPlayer"/>
-        private static Func<TestGame, Player, TestPlayer> newTestPlayer;
+        private static Func<TestGame<TClient>, Player, TestPlayer> newTestPlayer;
+
+        /// <summary>
+        /// Default token.
+        /// </summary>
+        private static readonly CancellationToken Token = CancellationToken.None;
 
         /// <summary>
         /// The GameService instance to test against.
         /// </summary>
-        private GameService service;
+        private TClient client;
 
         /// <summary>
         /// The Game to test against.
@@ -59,12 +54,7 @@ namespace SharpJackApi.UnitTests
         /// <seealso cref="Create(string, int, int, int, int)"/>
         private TestGame()
         {
-            var context = new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(ConnectionString).Options);
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
-            service = new GameService(context, null);
-            service.TimeService.CurrentTime = DateTime.UtcNow;
-
+            client = new TClient();
             // trigger static constructor
             TestPlayer.Touch();
         }
@@ -78,13 +68,22 @@ namespace SharpJackApi.UnitTests
         /// <param name="maxAnswerTime">The maximum time to answer a question.</param>
         /// <param name="maxRounds">The maximum number of rounds.</param>
         /// <returns>The newly created player and game.</returns>
-        public static (TestGame, TestPlayer) Create(string player, int maxPlayers, int maxQuestionTime = 1, int maxAnswerTime = 1, int maxRounds = 1)
+        public static (TestGame<TClient>, TestPlayer) Create(string player, int maxPlayers, int maxQuestionTime = 1, int maxAnswerTime = 1, int maxRounds = 1)
         {
-            var g = new TestGame();
+            var g = new TestGame<TClient>();
 
-            g.creator = g.service.AddPlayerAsync(player, CancellationToken.None).Result;
+            g.creator = g.client.AddPlayerAsync(player, Token).Result;
+            Assert.AreEqual(player, g.creator.Name);
+
             var options = new GameOptions { PlayerId = g.creator.Id, MaxPlayers = maxPlayers, MaxQuestionTime = maxQuestionTime, MaxAnswerTime = maxAnswerTime, MaxRounds = maxRounds };
-            g.game = g.service.CreateGameAsync(options, CancellationToken.None).Result;
+            g.game = g.client.CreateGameAsync(options, Token).Result;
+            Assert.AreEqual(options.MaxActiveTime, g.game.Options.MaxActiveTime);
+            Assert.AreEqual(options.MaxAnswerTime, g.game.Options.MaxAnswerTime);
+            Assert.AreEqual(options.MaxQuestionTime, g.game.Options.MaxQuestionTime);
+            Assert.AreEqual(options.MaxPlayers, g.game.Options.MaxPlayers);
+            Assert.AreEqual(options.MaxRounds, g.game.Options.MaxRounds);
+            Assert.AreEqual(options.PlayerId, g.game.Options.PlayerId);
+            Assert.AreEqual(GameState.Created, g.game.State);
 
             return (g, newTestPlayer(g, g.creator));
         }
@@ -94,8 +93,9 @@ namespace SharpJackApi.UnitTests
         /// </summary>
         public void Start()
         {
-            service.JoinOrStartGameAsync(game.Id, creator, CancellationToken.None).Wait();
-            var g = service.Context.GetGameAsync(game.Id, CancellationToken.None).Result;
+            client.JoinOrStartGameAsync(game.Id, creator, Token).Wait();
+
+            var g = client.GetGameAsync(game.Id, Token).Result;
             Assert.AreEqual(GameState.Active, g.State);
         }
 
@@ -106,10 +106,13 @@ namespace SharpJackApi.UnitTests
         /// <returns>The newly created player.</returns>
         public TestPlayer Join(string player)
         {
-            var p = service.AddPlayerAsync(player, CancellationToken.None).Result;
-            service.JoinOrStartGameAsync(game.Id, p, CancellationToken.None).Wait();
-            var g = service.Context.GetGameAsync(game.Id, CancellationToken.None).Result;
+            var p = client.AddPlayerAsync(player, Token).Result;
+            Assert.AreEqual(player, p.Name);
+
+            client.JoinOrStartGameAsync(game.Id, p, Token).Wait();
+            var g = client.GetGameAsync(game.Id, Token).Result;
             Assert.AreEqual(GameState.Created, g.State);
+
             return newTestPlayer(this, p);
         }
 
@@ -121,10 +124,13 @@ namespace SharpJackApi.UnitTests
         /// <param name="answer">The answer to the question.</param>
         public void Ask(Player player, string question, int answer)
         {
-            service.AskQuestionAsync(game.Id, new Question { PlayerId = player.Id, Title = question, Answer = answer }, CancellationToken.None).Wait();
-            var g = service.Context.GetGameAsync(game.Id, CancellationToken.None).Result;
-            Assert.AreEqual(answer, g.ActiveQuestion.Answer);
-            Assert.AreEqual(0, g.Answers.Count);
+            client.AskQuestionAsync(game.Id, new Question { PlayerId = player.Id, Title = question, Answer = answer }, Token).Wait();
+
+            RunOnGame(g =>
+            {
+                Assert.AreEqual(answer, g.ActiveQuestion.Answer);
+                Assert.AreEqual(0, g.Answers.Count);
+            });
         }
 
         /// <summary>
@@ -134,13 +140,17 @@ namespace SharpJackApi.UnitTests
         /// <param name="answer">The answer being submitted.</param>
         public void Answer(Player player, int answer)
         {
-            var g = service.Context.GetGameAsync(game.Id, CancellationToken.None).Result;
-            var count = g.Answers.Count;
-            var result = service.SubmitAnswerAsync(game.Id, new Answer { PlayerId = player.Id, Value = answer }, CancellationToken.None).Result;
-            Assert.AreEqual(count + 1, g.Answers.Count);
-            Assert.AreEqual(answer, g.Answers[count].Value);
-            Assert.AreEqual(player.Id, g.Answers[count].PlayerId);
-            Assert.AreEqual(g.ActiveQuestion.Answer, result.Value);
+            int count = 0;
+            RunOnGame(g => count = g.Answers.Count);
+
+            var result = client.SubmitAnswerAsync(game.Id, new Answer { PlayerId = player.Id, Value = answer }, Token).Result;
+            RunOnGame(g =>
+            {
+                Assert.AreEqual(count + 1, g.Answers.Count);
+                Assert.AreEqual(answer, g.Answers[count].Value);
+                Assert.AreEqual(player.Id, g.Answers[count].PlayerId);
+                Assert.AreEqual(g.ActiveQuestion.Answer, result.Value);
+            });
         }
 
         /// <summary>
@@ -150,19 +160,23 @@ namespace SharpJackApi.UnitTests
         /// <param name="score">The score to validate.</param>
         public void Score(Player player, int score)
         {
-            var g = service.Context.GetGameAsync(game.Id, CancellationToken.None).Result;
-
-            // trigger evaluation when all answers are in
-            if (g.Answers.Count == g.Players.Count - 1)
+            RunOnGame(g =>
             {
-                // Advance the time so the game engine can evaluate results
-                service.TimeService.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime);
-            }
+                // trigger evaluation when all answers are in
+                if (g.Answers.Count == g.Players.Count - 1)
+                {
+                    // Advance the time so the game engine can evaluate results
+                    RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
+                }
+            });
 
             // Check if the leaderboard is updated
-            var board = service.GetBoardAsync(game.Id, CancellationToken.None).Result;
-            Assert.AreEqual(g.Players.Count, board.Rows.Count);
-            Assert.AreEqual(score, board.Rows.First(r => r.PlayerName == player.Name).PlayerScore);
+            var board = client.GetBoardAsync(game.Id, Token).Result;
+            RunOnGame(g =>
+            {
+                Assert.AreEqual(g.Players.Count, board.Rows.Count);
+                Assert.AreEqual(score, board.Rows.First(r => r.PlayerName == player.Name).PlayerScore);
+            });
         }
 
         /// <summary>
@@ -170,11 +184,11 @@ namespace SharpJackApi.UnitTests
         /// </summary>
         public void End()
         {
-            var g = service.Context.GetGameAsync(game.Id, CancellationToken.None).Result;
+            var g = client.GetGameAsync(game.Id, Token).Result;
             Assert.AreEqual(GameState.Completed, g.State);
 
             // Clean up the database
-            service.Context.Database.EnsureDeleted();
+            RunOnService(c => c.Context.Database.EnsureDeleted());
         }
 
         /// <summary>
@@ -182,10 +196,37 @@ namespace SharpJackApi.UnitTests
         /// </summary>
         public void Dispose()
         {
-            if (service != null)
+            if (client != null)
             {
-                service.Dispose();
-                service = null;
+                client.Dispose();
+                client = default;
+            }
+        }
+
+        /// <summary>
+        /// Execute the given action against the game instance.
+        /// </summary>
+        /// <param name="action">The action to execute.</param>
+        private void RunOnGame(Action<Models.Game> action)
+        {
+            RunOnService(c =>
+            {
+                var context = c.Context;
+                var g = context.GetGameAsync(game.Id, Token).Result;
+                action(g);
+            });
+        }
+
+        /// <summary>
+        /// Execute the given action against the service instance.
+        /// </summary>
+        /// <param name="action">The action to execute.</param>
+        private void RunOnService(Action<SharpJackServiceClient> action)
+        {
+            if (client is SharpJackServiceClient)
+            {
+                var service = client as SharpJackServiceClient;
+                action(service);
             }
         }
 
@@ -201,7 +242,7 @@ namespace SharpJackApi.UnitTests
             /// <summary>
             /// The game the player is playing.
             /// </summary>
-            private readonly TestGame game;
+            private readonly TestGame<TClient> game;
 
             /// <summary>
             /// The underlying player.
@@ -234,7 +275,7 @@ namespace SharpJackApi.UnitTests
             /// </summary>
             /// <param name="game">The game to be a part of.</param>
             /// <param name="player">The underlying player.</param>
-            private TestPlayer(TestGame game, Player player)
+            private TestPlayer(TestGame<TClient> game, Player player)
             {
                 this.game = game;
                 this.player = player;

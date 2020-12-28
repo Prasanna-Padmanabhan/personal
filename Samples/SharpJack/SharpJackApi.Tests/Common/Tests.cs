@@ -1,14 +1,13 @@
-using Microsoft.VisualStudio.TestTools.UnitTesting;
+﻿using SharpJackApi.Interfaces;
+using System;
 
-namespace SharpJackApi.UnitTests
+namespace SharpJackApi.Tests
 {
-    [TestClass]
-    public class SharpJackApiUnitTests
+    public static class Tests<TClient> where TClient : IDisposable, IGameClient, new()
     {
-        [TestMethod]
-        public void TwoPlayers()
+        public static void TwoPlayersOneRound()
         {
-            (var game, var ben) = TestGame.Create("Benjamin Sisko", 2);
+            (var game, var ben) = TestGame<TClient>.Create("Benjamin Sisko", 2);
             using (game)
             {
                 var jake = game.Join("Jake Sisko");
@@ -26,10 +25,9 @@ namespace SharpJackApi.UnitTests
             }
         }
         
-        [TestMethod]
-        public void ManyPlayers()
+        public static void ManyPlayersOneRound()
         {
-            (var game, var frasier) = TestGame.Create("Frasier Crane", 5);
+            (var game, var frasier) = TestGame<TClient>.Create("Frasier Crane", 5);
             using (game)
             {
                 var niles = game.Join("Niles Crane");

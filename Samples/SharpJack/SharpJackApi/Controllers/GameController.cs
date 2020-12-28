@@ -2,10 +2,11 @@
 using Microsoft.Extensions.Logging;
 using SharpJackApi.Contracts;
 using SharpJackApi.Data;
+using SharpJackApi.Interfaces;
 using SharpJackApi.Services;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
-using GameOptions = SharpJackApi.Contracts.GameOptions;
 
 namespace SharpJackApi.Controllers
 {
@@ -14,7 +15,7 @@ namespace SharpJackApi.Controllers
     /// </summary>
     [ApiController]
     [Route("game")]
-    public class GameController : ControllerBase
+    public class GameController : ControllerBase, IGameClient
     {
         private readonly GameService gameService;
         private readonly ILogger<GameController> _logger;
@@ -155,6 +156,11 @@ namespace SharpJackApi.Controllers
         public Task<LeaderBoard> GetBoardAsync([FromRoute] int gameId, CancellationToken token)
         {
             return gameService.GetBoardAsync(gameId, token);
+        }
+
+        public Task EndGameAsync(int gameId, CancellationToken token)
+        {
+            throw new NotImplementedException();
         }
     }
 }

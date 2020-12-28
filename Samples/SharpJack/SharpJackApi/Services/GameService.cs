@@ -1,5 +1,6 @@
 ﻿using Microsoft.Extensions.Logging;
 using SharpJackApi.Data;
+using SharpJackApi.Interfaces;
 using SharpJackApi.Models;
 using SharpJackApi.Utilities;
 using System;
@@ -12,7 +13,7 @@ using GameOptions = SharpJackApi.Contracts.GameOptions;
 using GameState = SharpJackApi.Contracts.GameState;
 
 // needed by unit tests to access GameContext
-[assembly: InternalsVisibleTo("SharpJackApi.UnitTests")]
+[assembly: InternalsVisibleTo("SharpJackApi.Tests")]
 
 namespace SharpJackApi.Services
 {
@@ -22,7 +23,7 @@ namespace SharpJackApi.Services
     /// <remarks>
     /// This is implemented separately from the controller so it can be unit tested thoroughly in isolation.
     /// </remarks>
-    public class GameService : IDisposable
+    public class GameService : IDisposable, IGameClient
     {
         /// <summary>
         /// Minimum number of players for a game.
@@ -347,6 +348,11 @@ namespace SharpJackApi.Services
             }
 
             await Context.SaveChangesAsync(token);
+        }
+
+        public Task EndGameAsync(int gameId, CancellationToken token)
+        {
+            throw new NotImplementedException();
         }
 
         /// <summary>

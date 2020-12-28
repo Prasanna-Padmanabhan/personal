@@ -2,9 +2,10 @@
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 
-namespace SharpJackApi.IntegrationTests
+namespace SharpJackApi.Tests
 {
     /// <summary>
     /// Helper methods to send HTTP requests, trace responses and serialize/deserialize objects.
@@ -30,31 +31,44 @@ namespace SharpJackApi.IntegrationTests
         #region Async Methods
 
         public static async Task<TResult> GetAsJsonAsync<TResult>(this HttpClient client, string relativeUri,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            var response = await client.GetAsync(relativeUri);
+            var response = await client.GetAsync(relativeUri, token);
 
             var responseString = await TraceAndReturnResponseAsString(response, callerName);
 
             return JsonConvert.DeserializeObject<TResult>(responseString);
         }
 
+        public static async Task<TResult> GetAsJsonAsync<TContent, TResult>(this HttpClient client, string relativeUri,
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
+        {
+            var requestContent = SerializeAsJson(content);
+
+            var request = new HttpRequestMessage(HttpMethod.Get, relativeUri) { Content = requestContent };
+
+            var response = await client.SendAsync(request, token);
+            var responseString = await TraceAndReturnResponseAsString(response, callerName);
+
+            return JsonConvert.DeserializeObject<TResult>(responseString);
+        }
+
         public static async Task<string> PostAsJsonAsync<TContent>(this HttpClient client, string relativeUri,
-            TContent content, [CallerMemberName] string callerName = "")
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
             var httpContent = SerializeAsJson(content);
 
-            var response = await client.PostAsync(relativeUri, httpContent);
+            var response = await client.PostAsync(relativeUri, httpContent, token);
 
             return await TraceAndReturnResponseAsString(response, callerName);
         }
 
         public static async Task<TResult> PostAsJsonAsync<TContent, TResult>(this HttpClient client, string relativeUri,
-            TContent content, [CallerMemberName] string callerName = "")
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
             var httpContent = SerializeAsJson(content);
 
-            var response = await client.PostAsync(relativeUri, httpContent);
+            var response = await client.PostAsync(relativeUri, httpContent, token);
 
             var responseString = await TraceAndReturnResponseAsString(response, callerName);
 
@@ -62,12 +76,12 @@ namespace SharpJackApi.IntegrationTests
         }
 
         public static async Task<TResult> PostAsFormUrlEncodedAsync<TResult>(this HttpClient client, string relativeUri,
-            string content, [CallerMemberName] string callerName = "")
+            string content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
             HttpContent requestContent = new StringContent(content);
             requestContent.Headers.ContentType = new MediaTypeHeaderValue("application/x-www-form-urlencoded");
 
-            var response = await client.PostAsync(relativeUri, requestContent);
+            var response = await client.PostAsync(relativeUri, requestContent, token);
 
             var responseString = await TraceAndReturnResponseAsString(response, callerName);
 
@@ -75,27 +89,49 @@ namespace SharpJackApi.IntegrationTests
         }
 
         public static async Task<string> DeleteAsync(this HttpClient client, string relativeUri,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            var response = await client.DeleteAsync(relativeUri);
+            var response = await client.DeleteAsync(relativeUri, token);
+
+            return await TraceAndReturnResponseAsString(response, callerName);
+        }
+
+        public static async Task<TResult> PutAsJsonAsync<TContent, TResult>(this HttpClient client, string relativeUri,
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
+        {
+            var httpContent = SerializeAsJson(content);
+
+            var response = await client.PutAsync(relativeUri, httpContent, token);
+
+            var responseString = await TraceAndReturnResponseAsString(response, callerName);
+
+            return JsonConvert.DeserializeObject<TResult>(responseString);
+        }
+
+        public static async Task<string> PutAsJsonAsync<TContent>(this HttpClient client, string relativeUri,
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
+        {
+            var httpContent = SerializeAsJson(content);
+
+            var response = await client.PutAsync(relativeUri, httpContent, token);
 
             return await TraceAndReturnResponseAsString(response, callerName);
         }
 
         public static async Task<string> PatchAsJsonAsync<TContent>(this HttpClient client, string relativeUri,
-            TContent content, [CallerMemberName] string callerName = "")
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
             var requestContent = SerializeAsJson(content);
 
             var request = new HttpRequestMessage(new HttpMethod("PATCH"), relativeUri) { Content = requestContent };
 
-            return await SendAsync(client, request, callerName);
+            return await SendAsync(client, request, token, callerName);
         }
 
         public static async Task<string> SendAsync(this HttpClient client, HttpRequestMessage request,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            var response = await client.SendAsync(request);
+            var response = await client.SendAsync(request, token);
 
             return await TraceAndReturnResponseAsString(response, callerName);
         }
@@ -105,45 +141,45 @@ namespace SharpJackApi.IntegrationTests
         #region Sync Wrappers
 
         public static TResult GetAsJson<TResult>(this HttpClient client, string relativeUri,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => GetAsJsonAsync<TResult>(client, relativeUri, callerName)).Result;
+            return Task.Run(() => GetAsJsonAsync<TResult>(client, relativeUri, token, callerName)).Result;
         }
 
         public static string PostAsJson<TContent>(this HttpClient client, string relativeUri,
-            TContent content, [CallerMemberName] string callerName = "")
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => PostAsJsonAsync<TContent>(client, relativeUri, content, callerName)).Result;
+            return Task.Run(() => PostAsJsonAsync<TContent>(client, relativeUri, content, token, callerName)).Result;
         }
 
         public static TResult PostAsJson<TContent, TResult>(this HttpClient client, string relativeUri,
-            TContent content, [CallerMemberName] string callerName = "")
+            TContent content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => PostAsJsonAsync<TContent, TResult>(client, relativeUri, content, callerName)).Result;
+            return Task.Run(() => PostAsJsonAsync<TContent, TResult>(client, relativeUri, content, token, callerName)).Result;
         }
 
         public static TResult PostAsFormUrlEncoded<TResult>(this HttpClient client, string relativeUri,
-            string content, [CallerMemberName] string callerName = "")
+            string content, CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => PostAsFormUrlEncodedAsync<TResult>(client, relativeUri, content, callerName)).Result;
+            return Task.Run(() => PostAsFormUrlEncodedAsync<TResult>(client, relativeUri, content, token, callerName)).Result;
         }
 
         public static string Delete(this HttpClient client, string relativeUri,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => DeleteAsync(client, relativeUri, callerName)).Result;
+            return Task.Run(() => DeleteAsync(client, relativeUri, token, callerName)).Result;
         }
 
         public static string PatchAsJson<TContent>(this HttpClient client, string relativeUri, TContent content,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => PatchAsJsonAsync(client, relativeUri, content, callerName)).Result;
+            return Task.Run(() => PatchAsJsonAsync(client, relativeUri, content, token, callerName)).Result;
         }
 
         public static string Send(this HttpClient client, HttpRequestMessage message,
-            [CallerMemberName] string callerName = "")
+            CancellationToken token, [CallerMemberName] string callerName = "")
         {
-            return Task.Run(() => SendAsync(client, message, callerName)).Result;
+            return Task.Run(() => SendAsync(client, message, token, callerName)).Result;
         }
 
         #endregion
@@ -157,11 +193,13 @@ namespace SharpJackApi.IntegrationTests
             return requestContent;
         }
 
-        private static async Task<string> TraceAndReturnResponseAsString(HttpResponseMessage response, string callerName)
+        private static Task<string> TraceAndReturnResponseAsString(HttpResponseMessage response, string callerName)
         {
             response.EnsureSuccessStatusCode();
 
-            return await response.Content.ReadAsStringAsync();
+            // TODO: insert logging
+
+            return response.Content.ReadAsStringAsync();
         }
     }
 }
