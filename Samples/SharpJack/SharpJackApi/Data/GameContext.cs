@@ -23,7 +23,6 @@ namespace SharpJackApi.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Game>().OwnsOne(g => g.Options);
-            modelBuilder.Entity<LeaderBoard>().OwnsOne(b => b.Rows);
             base.OnModelCreating(modelBuilder);
         }
 

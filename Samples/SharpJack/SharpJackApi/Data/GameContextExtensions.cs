@@ -31,7 +31,18 @@ namespace SharpJackApi.Data
         /// <returns>The game details.</returns>
         public static Task<Game> GetGameAsync(this GameContext context, int gameId, CancellationToken token)
         {
-            return context.Games.FirstAsync(g => g.Id == gameId, token);
+            // load all related entities so business logic is simplified
+            // can have a performance impact which we will have to assess
+            return context.Games
+                .Include(g => g.ActiveQuestion)
+                .Include(g => g.Answers)
+                .Include(g => g.Players)
+                .Include(g => g.Board)
+                    .ThenInclude(b => b.Rows)
+                        .ThenInclude(r => r.Board)
+                    .ThenInclude(b => b.Rows)
+                        .ThenInclude(r => r.Player)
+                .FirstAsync(g => g.Id == gameId, token);
         }
     }
 }

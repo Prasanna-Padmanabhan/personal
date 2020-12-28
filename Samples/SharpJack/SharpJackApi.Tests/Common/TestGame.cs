@@ -19,6 +19,11 @@ namespace SharpJackApi.Tests
     public class TestGame<TClient> : IDisposable where TClient : IDisposable, IGameClient, new()
     {
         /// <summary>
+        /// Extra time to allow for things to catch up.
+        /// </summary>
+        private static readonly TimeSpan GracePeriod = TimeSpan.FromSeconds(2);
+
+        /// <summary>
         /// Delegate used to construct an instance of a TestPlayer.
         /// </summary>
         /// <remarks>
@@ -68,14 +73,14 @@ namespace SharpJackApi.Tests
         /// <param name="maxAnswerTime">The maximum time to answer a question.</param>
         /// <param name="maxRounds">The maximum number of rounds.</param>
         /// <returns>The newly created player and game.</returns>
-        public static (TestGame<TClient>, TestPlayer) Create(string player, int maxPlayers, int maxQuestionTime = 1, int maxAnswerTime = 1, int maxRounds = 1)
+        public static (TestGame<TClient>, TestPlayer) Create(string player, int maxPlayers, int maxRounds = 1)
         {
             var g = new TestGame<TClient>();
 
             g.creator = g.client.AddPlayerAsync(player, Token).Result;
             Assert.AreEqual(player, g.creator.Name);
 
-            var options = new GameOptions { PlayerId = g.creator.Id, MaxPlayers = maxPlayers, MaxQuestionTime = maxQuestionTime, MaxAnswerTime = maxAnswerTime, MaxRounds = maxRounds };
+            var options = new GameOptions { PlayerId = g.creator.Id, MaxPlayers = maxPlayers, MaxQuestionTime = 5, MaxAnswerTime = 5, MaxRounds = maxRounds };
             g.game = g.client.CreateGameAsync(options, Token).Result;
             Assert.AreEqual(options.MaxActiveTime, g.game.Options.MaxActiveTime);
             Assert.AreEqual(options.MaxAnswerTime, g.game.Options.MaxAnswerTime);
@@ -165,8 +170,17 @@ namespace SharpJackApi.Tests
                 // trigger evaluation when all answers are in
                 if (g.Answers.Count == g.Players.Count - 1)
                 {
-                    // Advance the time so the game engine can evaluate results
-                    RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
+                    if (client is SharpJackServiceClient)
+                    {
+                        // Advance the time so the game engine can evaluate results
+                        RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
+                    }
+                    else if (client is SharpJackApiClient)
+                    {
+                        // we are on actual time, so no choice but to wait until active time is over
+                        var waitTime = DateTime.UtcNow - game.ActiveUntil;
+                        Thread.Sleep(waitTime.Add(GracePeriod));
+                    }
                 }
             });
 

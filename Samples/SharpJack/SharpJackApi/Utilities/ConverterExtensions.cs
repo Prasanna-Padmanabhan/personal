@@ -31,7 +31,7 @@ namespace SharpJackApi.Utilities
     {
         public static Contracts.LeaderBoard ToContract(this Models.LeaderBoard board)
         {
-            return new Contracts.LeaderBoard { Rows = board.Rows.Select(r => new Contracts.Row { PlayerName = r.PlayerName, PlayerScore = r.PlayerScore}).ToList() };
+            return new Contracts.LeaderBoard { Rows = board.Rows.Select(r => new Contracts.Row { PlayerName = r.Player.Name, PlayerScore = r.PlayerScore}).ToList() };
         }
     }
 

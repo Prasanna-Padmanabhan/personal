@@ -95,7 +95,7 @@ namespace SharpJackApi.Services
             var player = await Context.GetPlayerAsync(options.PlayerId, token);
             var game = new Game { Options = options, State = GameState.Created };
             game.Players.Add(player);
-            game.Board.Rows.Add(new Row { PlayerId = player.Id, PlayerName = player.Name, PlayerScore = 0 });
+            game.Board.Rows.Add(new Row { Player = player, PlayerScore = 0 });
             var g = await Context.Games.AddAsync(game, token);
             await Context.SaveChangesAsync(token);
             return g.Entity.ToContract();
@@ -155,7 +155,7 @@ namespace SharpJackApi.Services
             else if (!game.Players.Contains(p))
             {
                 game.Players.Add(p);
-                game.Board.Rows.Add(new Row { PlayerId = p.Id, PlayerName = p.Name, PlayerScore = 0 });
+                game.Board.Rows.Add(new Row { Player = p, PlayerScore = 0 });
             }
 
             await Context.SaveChangesAsync(token);
@@ -304,7 +304,7 @@ namespace SharpJackApi.Services
                     int count = game.Answers.Count;
                     foreach (var answer in orderedAnswers)
                     {
-                        answer.Score = count + (int)(game.ActiveUntil - answer.SubmitTime).TotalSeconds;
+                        answer.Score = count * 2;
                         --count;
                     }
 
@@ -312,9 +312,13 @@ namespace SharpJackApi.Services
                     foreach (var row in game.Board.Rows)
                     {
                         // except for the person asking the question
-                        if (row.PlayerId != game.ActivePlayer)
+                        if (row.Player.Id != game.ActivePlayer)
                         {
-                            row.PlayerScore += orderedAnswers.First(a => a.PlayerId == row.PlayerId).Score;
+                            row.PlayerScore += orderedAnswers.First(a => a.PlayerId == row.Player.Id).Score;
+                        }
+                        else
+                        {
+                            row.PlayerScore += game.Answers.Count;
                         }
                     }
 
@@ -345,12 +349,12 @@ namespace SharpJackApi.Services
                 {
                     game.State = GameState.Completed;
                 }
-            }
 
-            await Context.SaveChangesAsync(token);
+                await Context.SaveChangesAsync(token);
+            }
         }
 
-        public Task EndGameAsync(int gameId, CancellationToken token)
+        public virtual Task EndGameAsync(int gameId, CancellationToken token)
         {
             throw new NotImplementedException();
         }

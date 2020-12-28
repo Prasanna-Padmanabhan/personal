@@ -1,7 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
-using SharpJackApi.Contracts;
 using SharpJackApi.Data;
-using SharpJackApi.Interfaces;
 using SharpJackApi.Services;
 using System;
 using System.Threading;
@@ -9,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SharpJackApi.Tests
 {
-    public class SharpJackServiceClient : IDisposable, IGameClient
+    public class SharpJackServiceClient : GameService
     {
         /// <summary>
         /// Database connection string.
@@ -21,18 +19,13 @@ namespace SharpJackApi.Tests
         private const string ConnectionString = "Server=(localdb)\\mssqllocaldb;Database=sharpjacktest;Trusted_Connection=True;MultipleActiveResultSets=true";
 
         /// <summary>
-        /// The GameService instance to test against.
-        /// </summary>
-        private GameService service;
-
-        /// <summary>
         /// The database context.
         /// </summary>
         /// <remarks>
         /// Make the database context available for create/delete operations
         /// as well as additional validation.
         /// </remarks>
-        public GameContext Context => service.Context;
+        public new GameContext Context => base.Context;
 
         /// <summary>
         /// The time encapsulation.
@@ -44,11 +37,11 @@ namespace SharpJackApi.Tests
         {
             get
             {
-                return service.TimeService.CurrentTime;
+                return TimeService.CurrentTime;
             }
             set
             {
-                service.TimeService.CurrentTime = value;
+                TimeService.CurrentTime = value;
             }
         }
 
@@ -56,74 +49,22 @@ namespace SharpJackApi.Tests
         /// Initialize resources.
         /// </summary>
         public SharpJackServiceClient()
+            : base(new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(ConnectionString).Options), null)
         {
-            var context = new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(ConnectionString).Options);
-            context.Database.EnsureDeleted();
-            context.Database.EnsureCreated();
-            service = new GameService(context, null);
-            service.TimeService.CurrentTime = DateTime.UtcNow;
-        }
-
-        public Task<Player> AddPlayerAsync(string playerName, CancellationToken token)
-        {
-            return service.AddPlayerAsync(playerName, token);
-        }
-
-        public Task<Player> GetPlayerAsync(int playerId, CancellationToken token)
-        {
-            return service.GetPlayerAsync(playerId, token);
-        }
-
-        public Task<Game> CreateGameAsync(GameOptions options, CancellationToken token)
-        {
-            return service.CreateGameAsync(options, token);
-        }
-
-        public Task<Game> GetGameAsync(int gameId, CancellationToken token)
-        {
-            return service.GetGameAsync(gameId, token);
-        }
-
-        public Task JoinOrStartGameAsync(int gameId, Player player, CancellationToken token)
-        {
-            return service.JoinOrStartGameAsync(gameId, player, token);
-        }
-
-        public Task AskQuestionAsync(int gameId, Question question, CancellationToken token)
-        {
-            return service.AskQuestionAsync(gameId, question, token);
-        }
-
-        public Task<Question> GetActiveQuestionAsync(int gameId, Player player, CancellationToken token)
-        {
-            return service.GetActiveQuestionAsync(gameId, player, token);
-        }
-
-        public Task<Answer> SubmitAnswerAsync(int gameId, Answer answer, CancellationToken token)
-        {
-            return service.SubmitAnswerAsync(gameId, answer, token);
-        }
-
-        public Task<LeaderBoard> GetBoardAsync(int gameId, CancellationToken token)
-        {
-            return service.GetBoardAsync(gameId, token);
-        }
-
-        public Task EndGameAsync(int gameId, CancellationToken token)
-        {
-            return service.Context.Database.EnsureDeletedAsync();
+            Context.Database.EnsureDeleted();
+            Context.Database.EnsureCreated();
+            CurrentTime = DateTime.UtcNow;
         }
 
         /// <summary>
-        /// Release resources.
+        /// Delete the database for predictable test results.
         /// </summary>
-        public void Dispose()
+        /// <param name="gameId">The ID of the game to end.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>Nothing</returns>
+        public override Task EndGameAsync(int gameId, CancellationToken token)
         {
-            if (service != null)
-            {
-                service.Dispose();
-                service = null;
-            }
+            return Context.Database.EnsureDeletedAsync();
         }
     }
 }

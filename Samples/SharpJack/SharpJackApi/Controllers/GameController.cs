@@ -31,6 +31,12 @@ namespace SharpJackApi.Controllers
             gameService = new GameService(context, logger);
         }
 
+        [Route("~/")]
+        public Task GetHomePageAsync()
+        {
+            return Task.FromResult(string.Empty);
+        }
+
         /// <summary>
         /// Add a new player.
         /// </summary>

@@ -9,14 +9,20 @@ namespace SharpJackApi.Models
     public class Row
     {
         /// <summary>
-        /// The ID of the player.
+        /// The ID, generated automatically by the database.
         /// </summary>
-        public int PlayerId { get; set; }
+        [DatabaseGenerated(DatabaseGeneratedOption.Identity)]
+        public int Id { get; set; }
 
         /// <summary>
-        /// The name of the player.
+        /// The board this row belongs to.
         /// </summary>
-        public string PlayerName { get; set; }
+        public LeaderBoard Board { get; set; }
+
+        /// <summary>
+        /// The player this score is for.
+        /// </summary>
+        public Player Player { get; set; }
 
         /// <summary>
         /// The score of the player.
