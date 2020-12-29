@@ -16,12 +16,17 @@ namespace SharpJackApi.Tests
     /// as appropriate after each step to minimize the actual test code
     /// and make it more readable.
     /// </remarks>
-    public class TestGame<TClient> : IDisposable where TClient : IDisposable, IGameClient, new()
+    public class TestGame<TClient> : IDisposable where TClient : IGameClient, new()
     {
         /// <summary>
-        /// Extra time to allow for things to catch up.
+        /// Maximum time to play, in seconds.
         /// </summary>
-        private static readonly TimeSpan GracePeriod = TimeSpan.FromSeconds(2);
+        private static readonly int MaxTime = 3;
+
+        /// <summary>
+        /// Extra time, in seconds, to allow for things to catch up.
+        /// </summary>
+        private static readonly int GraceTime = 1;
 
         /// <summary>
         /// Delegate used to construct an instance of a TestPlayer.
@@ -80,7 +85,7 @@ namespace SharpJackApi.Tests
             g.creator = g.client.AddPlayerAsync(player, Token).Result;
             Assert.AreEqual(player, g.creator.Name);
 
-            var options = new GameOptions { PlayerId = g.creator.Id, MaxPlayers = maxPlayers, MaxQuestionTime = 5, MaxAnswerTime = 5, MaxRounds = maxRounds };
+            var options = new GameOptions { PlayerId = g.creator.Id, MaxPlayers = maxPlayers, MaxQuestionTime = MaxTime, MaxAnswerTime = MaxTime, MaxRounds = maxRounds };
             g.game = g.client.CreateGameAsync(options, Token).Result;
             Assert.AreEqual(options.MaxActiveTime, g.game.Options.MaxActiveTime);
             Assert.AreEqual(options.MaxAnswerTime, g.game.Options.MaxAnswerTime);
@@ -165,24 +170,22 @@ namespace SharpJackApi.Tests
         /// <param name="score">The score to validate.</param>
         public void Score(Player player, int score)
         {
-            RunOnGame(g =>
+            if (client is SharpJackServiceClient)
             {
-                // trigger evaluation when all answers are in
-                if (g.Answers.Count == g.Players.Count - 1)
+                RunOnGame(g =>
                 {
-                    if (client is SharpJackServiceClient)
+                    if (g.Answers.Count == g.Players.Count - 1)
                     {
                         // Advance the time so the game engine can evaluate results
                         RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
                     }
-                    else if (client is SharpJackApiClient)
-                    {
-                        // we are on actual time, so no choice but to wait until active time is over
-                        var waitTime = DateTime.UtcNow - game.ActiveUntil;
-                        Thread.Sleep(waitTime.Add(GracePeriod));
-                    }
-                }
-            });
+                });
+            }
+            else if (client is SharpJackApiClient)
+            {
+                // we are on actual time, so no choice but to wait until active time is over
+                Thread.Sleep(TimeSpan.FromSeconds(game.Options.MaxAnswerTime + GraceTime));
+            }
 
             // Check if the leaderboard is updated
             var board = client.GetBoardAsync(game.Id, Token).Result;

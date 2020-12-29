@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SharpJackApi.Tests
 {
-    public class SharpJackApiClient : IDisposable, IGameClient
+    public class SharpJackApiClient : IGameClient
     {
         private const string Endpoint = "https://sharpjackapi.azurewebsites.net";
 

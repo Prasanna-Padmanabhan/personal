@@ -17,8 +17,8 @@ namespace SharpJackApi.Controllers
     [Route("game")]
     public class GameController : ControllerBase, IGameClient
     {
-        private readonly GameService gameService;
         private readonly ILogger<GameController> _logger;
+        private GameService gameService;
 
         /// <summary>
         /// Initializes the controller.
@@ -167,6 +167,15 @@ namespace SharpJackApi.Controllers
         public Task EndGameAsync(int gameId, CancellationToken token)
         {
             throw new NotImplementedException();
+        }
+
+        public void Dispose()
+        {
+            if (gameService != null)
+            {
+                gameService.Dispose();
+                gameService = null;
+            }
         }
     }
 }

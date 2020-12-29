@@ -23,7 +23,7 @@ namespace SharpJackApi.Services
     /// <remarks>
     /// This is implemented separately from the controller so it can be unit tested thoroughly in isolation.
     /// </remarks>
-    public class GameService : IDisposable, IGameClient
+    public class GameService : IGameClient
     {
         /// <summary>
         /// Minimum number of players for a game.

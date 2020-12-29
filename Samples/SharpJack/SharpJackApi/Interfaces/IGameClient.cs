@@ -1,4 +1,5 @@
 ﻿using SharpJackApi.Contracts;
+using System;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -13,7 +14,7 @@ namespace SharpJackApi.Interfaces
     /// Second is the Service which implements the business logic behind the API.
     /// Third and fourth are the encapsulations of the above two for testing purposes.
     /// </remarks>
-    public interface IGameClient
+    public interface IGameClient : IDisposable
     {
         Task<Player> AddPlayerAsync(string playerName, CancellationToken token);
 
