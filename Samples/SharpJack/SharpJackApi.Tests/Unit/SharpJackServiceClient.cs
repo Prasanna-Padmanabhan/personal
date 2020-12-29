@@ -83,10 +83,5 @@ namespace SharpJackApi.Tests
             // Advance the time so the game engine can evaluate results
             CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime);
         }
-
-        public async Task ExecuteAsync(int? gameId, CancellationToken token)
-        {
-
-        }
     }
 }

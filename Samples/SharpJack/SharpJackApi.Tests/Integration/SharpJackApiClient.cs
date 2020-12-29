@@ -84,6 +84,8 @@ namespace SharpJackApi.Tests
         public async Task TriggerEvaluationAsync(int gameId, CancellationToken token)
         {
             var game = await GetGameAsync(gameId, token);
+            // there is no way to force evaluation, we just have to wait
+            // until the time has elapsed for the game engine to run
             Thread.Sleep(game.Options.MaxAnswerTime + GraceTime);
         }
 
