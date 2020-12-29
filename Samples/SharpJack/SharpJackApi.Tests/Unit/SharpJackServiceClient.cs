@@ -46,10 +46,18 @@ namespace SharpJackApi.Tests
         }
 
         /// <summary>
+        /// Parameterless constructor to satisfy the new generic constraint.
+        /// </summary>
+        /// <seealso cref="Tests{TClient}"/>
+        public SharpJackServiceClient() : this(null)
+        {
+        }
+
+        /// <summary>
         /// Initialize resources.
         /// </summary>
-        public SharpJackServiceClient()
-            : base(new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(ConnectionString).Options), null)
+        public SharpJackServiceClient(string connectionString = null)
+            : base(new GameContext(new DbContextOptionsBuilder<GameContext>().UseSqlServer(connectionString ?? ConnectionString).Options), null)
         {
             Context.Database.EnsureDeleted();
             Context.Database.EnsureCreated();

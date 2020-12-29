@@ -39,8 +39,6 @@ namespace SharpJackApi.Data
                 .Include(g => g.Players)
                 .Include(g => g.Board)
                     .ThenInclude(b => b.Rows)
-                        .ThenInclude(r => r.Board)
-                    .ThenInclude(b => b.Rows)
                         .ThenInclude(r => r.Player)
                 .FirstAsync(g => g.Id == gameId, token);
         }

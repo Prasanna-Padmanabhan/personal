@@ -1,6 +1,5 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpJackApi.Contracts;
-using SharpJackApi.Data;
 using System;
 using System.Linq;
 using System.Threading;
@@ -21,11 +20,6 @@ namespace SharpJackApi.Tests
         /// Maximum time to play, in seconds.
         /// </summary>
         private static readonly int MaxTime = 3;
-
-        /// <summary>
-        /// Extra time, in seconds, to allow for things to catch up.
-        /// </summary>
-        private static readonly int GraceTime = 1;
 
         /// <summary>
         /// Delegate used to construct an instance of a TestPlayer.

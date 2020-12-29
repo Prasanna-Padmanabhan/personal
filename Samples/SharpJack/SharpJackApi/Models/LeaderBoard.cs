@@ -15,11 +15,6 @@ namespace SharpJackApi.Models
         public int Id { get; set; }
 
         /// <summary>
-        /// The board this row belongs to.
-        /// </summary>
-        public LeaderBoard Board { get; set; }
-
-        /// <summary>
         /// The player this score is for.
         /// </summary>
         public Player Player { get; set; }
