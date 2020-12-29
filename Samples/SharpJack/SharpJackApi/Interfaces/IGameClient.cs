@@ -26,6 +26,8 @@ namespace SharpJackApi.Interfaces
 
         Task JoinOrStartGameAsync(int gameId, Player player, CancellationToken token);
 
+        Task<Game> EndGameAsync(int gameId, Player player, CancellationToken token);
+
         Task AskQuestionAsync(int gameId, Question question, CancellationToken token);
 
         Task<Question> GetActiveQuestionAsync(int gameId, Player player, CancellationToken token);
@@ -33,7 +35,5 @@ namespace SharpJackApi.Interfaces
         Task<Answer> SubmitAnswerAsync(int gameId, Answer answer, CancellationToken token);
 
         Task<LeaderBoard> GetBoardAsync(int gameId, CancellationToken token);
-
-        Task EndGameAsync(int gameId, CancellationToken token);
     }
 }

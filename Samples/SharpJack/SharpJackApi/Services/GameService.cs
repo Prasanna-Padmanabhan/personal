@@ -357,9 +357,19 @@ namespace SharpJackApi.Services
             }
         }
 
-        public virtual Task EndGameAsync(int gameId, CancellationToken token)
+        public virtual async Task<Contracts.Game> EndGameAsync(int gameId, Contracts.Player player, CancellationToken token)
         {
-            throw new NotImplementedException();
+            var g = await Context.GetGameAsync(gameId, token);
+
+            if (g.Players[0].Id == player.Id)
+            {
+                g.State = GameState.Completed;
+                await Context.SaveChangesAsync(token);
+
+                return g.ToContract();
+            }
+
+            throw new InvalidOperationException("Only creator can end the game");
         }
 
         /// <summary>

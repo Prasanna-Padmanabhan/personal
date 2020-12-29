@@ -107,6 +107,18 @@ namespace SharpJackApi.Controllers
         }
 
         /// <summary>
+        /// Complete the tame.
+        /// </summary>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>Nothing</returns>
+        [Route("{gameId}")]
+        [HttpPost]
+        public Task<Game> EndGameAsync([FromRoute] int gameId, [FromBody] Player player, CancellationToken token)
+        {
+            return gameService.EndGameAsync(gameId, player, token);
+        }
+        /// <summary>
         /// Get the currently active question of a given game.
         /// </summary>
         /// <param name="gameId">The ID of the game.</param>
@@ -162,11 +174,6 @@ namespace SharpJackApi.Controllers
         public Task<LeaderBoard> GetBoardAsync([FromRoute] int gameId, CancellationToken token)
         {
             return gameService.GetBoardAsync(gameId, token);
-        }
-
-        public Task EndGameAsync(int gameId, CancellationToken token)
-        {
-            throw new NotImplementedException();
         }
 
         public void Dispose()

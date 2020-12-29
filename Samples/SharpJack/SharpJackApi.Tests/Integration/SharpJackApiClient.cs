@@ -1,5 +1,4 @@
 ﻿using SharpJackApi.Contracts;
-using SharpJackApi.Interfaces;
 using System;
 using System.Net.Http;
 using System.Threading;
@@ -7,10 +6,21 @@ using System.Threading.Tasks;
 
 namespace SharpJackApi.Tests
 {
-    public class SharpJackApiClient : IGameClient
+    public class SharpJackApiClient : ITestGameClient
     {
+        /// <summary>
+        /// The endpoint to test against.
+        /// </summary>
         private const string Endpoint = "https://sharpjackapi.azurewebsites.net";
 
+        /// <summary>
+        /// Extra time to let things catch up.
+        /// </summary>
+        private const int GraceTime = 1;
+
+        /// <summary>
+        /// The HTTP client to perform operations with.
+        /// </summary>
         private HttpClient client;
 
         public SharpJackApiClient()
@@ -66,9 +76,15 @@ namespace SharpJackApi.Tests
             return client.GetAsJsonAsync<LeaderBoard>($"game/{gameId}/board", token);
         }
 
-        public Task EndGameAsync(int gameId, CancellationToken token)
+        public Task<Game> EndGameAsync(int gameId, Player player, CancellationToken token)
         {
-            throw new NotImplementedException();
+            return client.PostAsJsonAsync<Player, Game>($"game/{gameId}", player, token);
+        }
+
+        public async Task TriggerEvaluationAsync(int gameId, CancellationToken token)
+        {
+            var game = await GetGameAsync(gameId, token);
+            Thread.Sleep(game.Options.MaxAnswerTime + GraceTime);
         }
 
         public void Dispose()
@@ -79,5 +95,6 @@ namespace SharpJackApi.Tests
                 client = null;
             }
         }
+
     }
 }

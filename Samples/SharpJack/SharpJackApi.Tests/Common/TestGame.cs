@@ -1,7 +1,6 @@
 ﻿using Microsoft.VisualStudio.TestTools.UnitTesting;
 using SharpJackApi.Contracts;
 using SharpJackApi.Data;
-using SharpJackApi.Interfaces;
 using System;
 using System.Linq;
 using System.Threading;
@@ -16,7 +15,7 @@ namespace SharpJackApi.Tests
     /// as appropriate after each step to minimize the actual test code
     /// and make it more readable.
     /// </remarks>
-    public class TestGame<TClient> : IDisposable where TClient : IGameClient, new()
+    public class TestGame<TClient> : IDisposable where TClient : ITestGameClient, new()
     {
         /// <summary>
         /// Maximum time to play, in seconds.
@@ -143,12 +142,6 @@ namespace SharpJackApi.Tests
             board = null;
 
             client.AskQuestionAsync(game.Id, new Question { PlayerId = player.Id, Title = question, Answer = answer }, Token).Wait();
-
-            RunOnGame(g =>
-            {
-                Assert.AreEqual(answer, g.ActiveQuestion.Answer);
-                Assert.AreEqual(0, g.Answers.Count);
-            });
         }
 
         /// <summary>
@@ -158,17 +151,7 @@ namespace SharpJackApi.Tests
         /// <param name="answer">The answer being submitted.</param>
         public void Answer(Player player, int answer)
         {
-            int count = 0;
-            RunOnGame(g => count = g.Answers.Count);
-
-            var result = client.SubmitAnswerAsync(game.Id, new Answer { PlayerId = player.Id, Value = answer }, Token).Result;
-            RunOnGame(g =>
-            {
-                Assert.AreEqual(count + 1, g.Answers.Count);
-                Assert.AreEqual(answer, g.Answers[count].Value);
-                Assert.AreEqual(player.Id, g.Answers[count].PlayerId);
-                Assert.AreEqual(g.ActiveQuestion.Answer, result.Value);
-            });
+            client.SubmitAnswerAsync(game.Id, new Answer { PlayerId = player.Id, Value = answer }, Token).Wait();
         }
 
         /// <summary>
@@ -180,27 +163,14 @@ namespace SharpJackApi.Tests
         {
             if (board == null)
             {
-                if (client is SharpJackServiceClient)
-                {
-                    // Advance the time so the game engine can evaluate results
-                    RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
-                }
-                else if (client is SharpJackApiClient)
-                {
-                    // we are on actual time, so no choice but to wait until active time is over
-                    Thread.Sleep(TimeSpan.FromSeconds(game.Options.MaxAnswerTime + GraceTime));
-                }
+                client.TriggerEvaluationAsync(game.Id, Token).Wait();
 
                 // Retrieve the leaderboard
                 board = client.GetBoardAsync(game.Id, Token).Result;
             }
 
             // validate that the player scored as expected
-            RunOnGame(g =>
-            {
-                Assert.AreEqual(g.Players.Count, board.Rows.Count);
-                Assert.AreEqual(score, board.Rows.First(r => r.PlayerName == player.Name).PlayerScore);
-            });
+            Assert.AreEqual(score, board.Rows.First(r => r.PlayerName == player.Name).PlayerScore);
         }
 
         /// <summary>
@@ -208,11 +178,8 @@ namespace SharpJackApi.Tests
         /// </summary>
         public void End()
         {
-            var g = client.GetGameAsync(game.Id, Token).Result;
+            var g = client.EndGameAsync(game.Id, creator, Token).Result;
             Assert.AreEqual(GameState.Completed, g.State);
-
-            // Clean up the database
-            RunOnService(c => c.Context.Database.EnsureDeleted());
         }
 
         /// <summary>
@@ -224,33 +191,6 @@ namespace SharpJackApi.Tests
             {
                 client.Dispose();
                 client = default;
-            }
-        }
-
-        /// <summary>
-        /// Execute the given action against the game instance.
-        /// </summary>
-        /// <param name="action">The action to execute.</param>
-        private void RunOnGame(Action<Models.Game> action)
-        {
-            RunOnService(c =>
-            {
-                var context = c.Context;
-                var g = context.GetGameAsync(game.Id, Token).Result;
-                action(g);
-            });
-        }
-
-        /// <summary>
-        /// Execute the given action against the service instance.
-        /// </summary>
-        /// <param name="action">The action to execute.</param>
-        private void RunOnService(Action<SharpJackServiceClient> action)
-        {
-            if (client is SharpJackServiceClient)
-            {
-                var service = client as SharpJackServiceClient;
-                action(service);
             }
         }
 

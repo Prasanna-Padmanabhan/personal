@@ -1,8 +1,6 @@
-﻿using SharpJackApi.Interfaces;
-
-namespace SharpJackApi.Tests
+﻿namespace SharpJackApi.Tests
 {
-    public static class Tests<TClient> where TClient : IGameClient, new()
+    public static class Tests<TClient> where TClient : ITestGameClient, new()
     {
         public static void TwoPlayersOneRound()
         {

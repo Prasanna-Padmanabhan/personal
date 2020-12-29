@@ -7,7 +7,7 @@ using System.Threading.Tasks;
 
 namespace SharpJackApi.Tests
 {
-    public class SharpJackServiceClient : GameService
+    public class SharpJackServiceClient : GameService, ITestGameClient
     {
         /// <summary>
         /// Database connection string.
@@ -62,9 +62,31 @@ namespace SharpJackApi.Tests
         /// <param name="gameId">The ID of the game to end.</param>
         /// <param name="token">The cancellation token.</param>
         /// <returns>Nothing</returns>
-        public override Task EndGameAsync(int gameId, CancellationToken token)
+        public override async Task<Contracts.Game> EndGameAsync(int gameId, Contracts.Player player, CancellationToken token)
         {
-            return Context.Database.EnsureDeletedAsync();
+            var game = await base.EndGameAsync(gameId, player, token);
+
+            await Context.Database.EnsureDeletedAsync();
+
+            return game;
+        }
+
+        /// <summary>
+        /// Take actions necessary to trigger game engine evaluation.
+        /// </summary>
+        /// <param name="gameId">The ID of the game.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>Nothing</returns>
+        public async Task TriggerEvaluationAsync(int gameId, CancellationToken token)
+        {
+            var game = await Context.GetGameAsync(gameId, token);
+            // Advance the time so the game engine can evaluate results
+            CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime);
+        }
+
+        public async Task ExecuteAsync(int? gameId, CancellationToken token)
+        {
+
         }
     }
 }
