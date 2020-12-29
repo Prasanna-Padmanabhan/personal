@@ -23,7 +23,13 @@ namespace SharpJackApi.Utilities
     {
         public static Contracts.Game ToContract(this Models.Game game)
         {
-            return new Contracts.Game { ActivePlayer = game.ActivePlayer, ActiveUntil = game.ActiveUntil, Id = game.Id, Options = game.Options, State = game.State };
+            return new Contracts.Game { 
+                ActivePlayer = game.ActivePlayer, 
+                ActiveUntil = game.ActiveUntil, 
+                Id = game.Id, 
+                Options = game.Options, 
+                State = game.State
+            };
         }
     }
 

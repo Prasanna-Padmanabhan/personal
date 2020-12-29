@@ -59,6 +59,11 @@ namespace SharpJackApi.Tests
         private Player creator;
 
         /// <summary>
+        /// The current leader board.
+        /// </summary>
+        private LeaderBoard board;
+
+        /// <summary>
         /// Private constructor to prevent initialization from outside the class.
         /// </summary>
         /// <seealso cref="Create(string, int, int, int, int)"/>
@@ -134,6 +139,9 @@ namespace SharpJackApi.Tests
         /// <param name="answer">The answer to the question.</param>
         public void Ask(Player player, string question, int answer)
         {
+            // reset the board
+            board = null;
+
             client.AskQuestionAsync(game.Id, new Question { PlayerId = player.Id, Title = question, Answer = answer }, Token).Wait();
 
             RunOnGame(g =>
@@ -170,25 +178,24 @@ namespace SharpJackApi.Tests
         /// <param name="score">The score to validate.</param>
         public void Score(Player player, int score)
         {
-            if (client is SharpJackServiceClient)
+            if (board == null)
             {
-                RunOnGame(g =>
+                if (client is SharpJackServiceClient)
                 {
-                    if (g.Answers.Count == g.Players.Count - 1)
-                    {
-                        // Advance the time so the game engine can evaluate results
-                        RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
-                    }
-                });
-            }
-            else if (client is SharpJackApiClient)
-            {
-                // we are on actual time, so no choice but to wait until active time is over
-                Thread.Sleep(TimeSpan.FromSeconds(game.Options.MaxAnswerTime + GraceTime));
+                    // Advance the time so the game engine can evaluate results
+                    RunOnService(c => c.CurrentTime += TimeSpan.FromSeconds(game.Options.MaxAnswerTime));
+                }
+                else if (client is SharpJackApiClient)
+                {
+                    // we are on actual time, so no choice but to wait until active time is over
+                    Thread.Sleep(TimeSpan.FromSeconds(game.Options.MaxAnswerTime + GraceTime));
+                }
+
+                // Retrieve the leaderboard
+                board = client.GetBoardAsync(game.Id, Token).Result;
             }
 
-            // Check if the leaderboard is updated
-            var board = client.GetBoardAsync(game.Id, Token).Result;
+            // validate that the player scored as expected
             RunOnGame(g =>
             {
                 Assert.AreEqual(g.Players.Count, board.Rows.Count);

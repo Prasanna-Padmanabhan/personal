@@ -15,7 +15,7 @@ namespace SharpJackApi.Contracts
     /// <summary>
     /// Represents a game.
     /// </summary>
-    public struct Game
+    public class Game
     {
         /// <summary>
         /// The ID of the game.

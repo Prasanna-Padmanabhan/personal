@@ -257,9 +257,12 @@ namespace SharpJackApi.Services
                 {
                     throw new InvalidOperationException("Too late");
                 }
+                else if (game.Answers.Exists(a => a.PlayerId == answer.PlayerId))
+                {
+                    throw new InvalidOperationException("Already submitted");
+                }
                 else
                 {
-                    // TODO: enforce only one answer per player per question
                     var a = answer.ToModel();
                     a.SubmitTime = now;
                     game.Answers.Add(a);
@@ -281,7 +284,7 @@ namespace SharpJackApi.Services
         public async Task<Contracts.LeaderBoard> GetBoardAsync(int gameId, CancellationToken token)
         {
             var g = await Context.GetGameAsync(gameId, token);
-            await EvaluateAsync(g, token);
+            await EvaluateGameAsync(g, token);
             return g.Board.ToContract();
         }
 
@@ -291,7 +294,7 @@ namespace SharpJackApi.Services
         /// <param name="game">The game to evaluate.</param>
         /// <param name="token">The cancellation token.</param>
         /// <returns>Nothing</returns>
-        public async Task EvaluateAsync(Game game, CancellationToken token)
+        private async Task EvaluateGameAsync(Game game, CancellationToken token)
         {
             // time to evaluate
             if (game.State == GameState.Active && TimeService.CurrentTime >= game.ActiveUntil)
