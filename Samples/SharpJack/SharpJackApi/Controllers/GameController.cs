@@ -4,7 +4,6 @@ using SharpJackApi.Contracts;
 using SharpJackApi.Data;
 using SharpJackApi.Interfaces;
 using SharpJackApi.Services;
-using System;
 using System.Threading;
 using System.Threading.Tasks;
 

@@ -23,7 +23,6 @@ namespace SharpJackApi.Data
         protected override void OnModelCreating(ModelBuilder modelBuilder)
         {
             modelBuilder.Entity<Game>().OwnsOne(g => g.Options);
-            base.OnModelCreating(modelBuilder);
         }
 
         /// <summary>
@@ -35,5 +34,25 @@ namespace SharpJackApi.Data
         /// The set of players in the database.
         /// </summary>
         public DbSet<Player> Players { get; set; }
+
+        /// <summary>
+        /// The set of leader board rows in the database.
+        /// </summary>
+        public DbSet<Row> Rows { get; set; }
+
+        /// <summary>
+        /// The set of leader boards in the database.
+        /// </summary>
+        public DbSet<LeaderBoard> Boards { get; set; }
+
+        /// <summary>
+        /// The set of questions in the database.
+        /// </summary>
+        public DbSet<Question> Questions { get; set; }
+
+        /// <summary>
+        /// The set of answers in the database.
+        /// </summary>
+        public DbSet<Answer> Answers { get; set; }
     }
 }

@@ -19,7 +19,7 @@ namespace SharpJackApi.Tests
         /// <summary>
         /// Maximum time to play, in seconds.
         /// </summary>
-        private static readonly int MaxTime = 3;
+        private static readonly int MaxTime = 10;
 
         /// <summary>
         /// Delegate used to construct an instance of a TestPlayer.
@@ -37,7 +37,7 @@ namespace SharpJackApi.Tests
         private static readonly CancellationToken Token = CancellationToken.None;
 
         /// <summary>
-        /// The GameService instance to test against.
+        /// The client instance to test against.
         /// </summary>
         private TClient client;
 
@@ -105,6 +105,9 @@ namespace SharpJackApi.Tests
 
             var g = client.GetGameAsync(game.Id, Token).Result;
             Assert.AreEqual(GameState.Active, g.State);
+
+            var b = client.GetBoardAsync(game.Id, Token).Result;
+            Assert.IsTrue(b.Rows.Exists(r => r.PlayerName == creator.Name && r.PlayerScore == 0));
         }
 
         /// <summary>
@@ -120,6 +123,9 @@ namespace SharpJackApi.Tests
             client.JoinOrStartGameAsync(game.Id, p, Token).Wait();
             var g = client.GetGameAsync(game.Id, Token).Result;
             Assert.AreEqual(GameState.Created, g.State);
+
+            var b = client.GetBoardAsync(game.Id, Token).Result;
+            Assert.IsTrue(b.Rows.Exists(r => r.PlayerName == player && r.PlayerScore == 0));
 
             return newTestPlayer(this, p);
         }

@@ -1,5 +1,6 @@
 using Azure.Identity;
 using Microsoft.AspNetCore.Hosting;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
@@ -26,8 +27,8 @@ namespace SharpJackApi
                 {
                     var keyVaultEndpoint = new Uri(Environment.GetEnvironmentVariable("VaultUri"));
                     config.AddAzureKeyVault(
-                    keyVaultEndpoint,
-                    new DefaultAzureCredential());
+                        keyVaultEndpoint,
+                        new DefaultAzureCredential());
                 })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
@@ -42,7 +43,7 @@ namespace SharpJackApi
                 try
                 {
                     var context = services.GetRequiredService<GameContext>();
-                    context.Database.EnsureCreated();
+                    context.Database.Migrate();
                 }
                 catch (Exception ex)
                 {

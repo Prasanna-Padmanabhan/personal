@@ -95,7 +95,9 @@ namespace SharpJackApi.Services
             var player = await Context.GetPlayerAsync(options.PlayerId, token);
             var game = new Game { Options = options, State = GameState.Created };
             game.Players.Add(player);
-            game.Board.Rows.Add(new Row { Player = player, PlayerScore = 0 });
+            var row = new Row { Player = player, PlayerScore = 0 };
+            game.Board.Rows.Add(row);
+            Context.Rows.Add(row);
             var g = await Context.Games.AddAsync(game, token);
             await Context.SaveChangesAsync(token);
             return g.Entity.ToContract();
@@ -155,7 +157,9 @@ namespace SharpJackApi.Services
             else if (!game.Players.Contains(p))
             {
                 game.Players.Add(p);
-                game.Board.Rows.Add(new Row { Player = p, PlayerScore = 0 });
+                var row = new Row { Player = p, PlayerScore = 0 };
+                game.Board.Rows.Add(row);
+                Context.Rows.Add(row);
             }
 
             await Context.SaveChangesAsync(token);
@@ -323,6 +327,7 @@ namespace SharpJackApi.Services
                         {
                             row.PlayerScore += game.Answers.Count;
                         }
+                        Context.Rows.Update(row);
                     }
 
                     // clear existing answers

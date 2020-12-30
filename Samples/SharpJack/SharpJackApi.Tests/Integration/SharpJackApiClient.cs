@@ -86,7 +86,15 @@ namespace SharpJackApi.Tests
             var game = await GetGameAsync(gameId, token);
             // there is no way to force evaluation, we just have to wait
             // until the time has elapsed for the game engine to run
-            Thread.Sleep(game.Options.MaxAnswerTime + GraceTime);
+            // so first determine how long we have to wait
+            var waitTime = (DateTime.UtcNow - game.ActiveUntil).TotalSeconds;
+            if (waitTime > game.Options.MaxAnswerTime)
+            {
+                waitTime = game.Options.MaxAnswerTime;
+            }
+
+            // now wait
+            Thread.Sleep(TimeSpan.FromSeconds(waitTime + GraceTime));
         }
 
         public void Dispose()

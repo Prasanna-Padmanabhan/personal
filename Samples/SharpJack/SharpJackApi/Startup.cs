@@ -1,12 +1,10 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using SharpJackApi.Data;
-using System;
 
 namespace SharpJackApi
 {
@@ -37,12 +35,6 @@ namespace SharpJackApi
             app.UseHttpsRedirection();
 
             app.UseRouting();
-
-            app.Use(next => context =>
-            {
-                Console.WriteLine($"Found: {context.GetEndpoint()?.DisplayName}");
-                return next(context);
-            });
 
             app.UseAuthorization();
 
