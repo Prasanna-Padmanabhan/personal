@@ -1,4 +1,5 @@
 ﻿using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.Logging;
 using SharpJackApi.Models;
 
 namespace SharpJackApi.Data
@@ -54,5 +55,30 @@ namespace SharpJackApi.Data
         /// The set of answers in the database.
         /// </summary>
         public DbSet<Answer> Answers { get; set; }
+
+        private static ILogger Logger;
+
+        public void LogEvents(ILogger logger)
+        {
+            Logger = logger;
+            SavingChanges += HandleSavingChanges;
+            SavedChanges += HandleSavedChanges;
+            SaveChangesFailed += HandleSaveChangesFailed;
+        }
+
+        private static void HandleSaveChangesFailed(object sender, SaveChangesFailedEventArgs e)
+        {
+            Logger?.LogError(e.Exception.ToString());
+        }
+
+        private static void HandleSavedChanges(object sender, SavedChangesEventArgs e)
+        {
+            Logger?.LogInformation(e.EntitiesSavedCount.ToString());
+        }
+
+        private static void HandleSavingChanges(object sender, SavingChangesEventArgs e)
+        {
+            Logger?.LogInformation(e.ToString());
+        }
     }
 }

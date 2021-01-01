@@ -30,6 +30,11 @@ namespace SharpJackApi
                         keyVaultEndpoint,
                         new DefaultAzureCredential());
                 })
+                .ConfigureLogging(logging =>
+                {
+                    logging.ClearProviders();
+                    logging.AddAzureWebAppDiagnostics();
+                })
                 .ConfigureWebHostDefaults(webBuilder =>
                 {
                     webBuilder.UseStartup<Startup>();

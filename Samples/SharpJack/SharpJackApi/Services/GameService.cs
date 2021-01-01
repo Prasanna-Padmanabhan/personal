@@ -46,7 +46,9 @@ namespace SharpJackApi.Services
         /// </remarks>
         internal TimeService TimeService { get; private set; }
 
+#pragma warning disable IDE0052 // Remove unread private members
         private readonly ILogger logger;
+#pragma warning restore IDE0052 // Remove unread private members
 
         /// <summary>
         /// Initialize with the given context.
@@ -57,6 +59,7 @@ namespace SharpJackApi.Services
             Context = context;
             TimeService = new TimeService();
             this.logger = logger;
+            context.LogEvents(logger);
         }
 
         /// <summary>
@@ -97,7 +100,6 @@ namespace SharpJackApi.Services
             game.Players.Add(player);
             var row = new Row { Player = player, PlayerScore = 0 };
             game.Board.Rows.Add(row);
-            Context.Rows.Add(row);
             var g = await Context.Games.AddAsync(game, token);
             await Context.SaveChangesAsync(token);
             return g.Entity.ToContract();
@@ -157,12 +159,10 @@ namespace SharpJackApi.Services
             else if (!game.Players.Contains(p))
             {
                 game.Players.Add(p);
-                var row = new Row { Player = p, PlayerScore = 0 };
-                game.Board.Rows.Add(row);
-                Context.Rows.Add(row);
+                game.Board.Rows.Add(new Row { Player = p, PlayerScore = 0 });
             }
 
-            await Context.SaveChangesAsync(token);
+            await Context.SaveAsync(game, token);
         }
 
         /// <summary>
@@ -273,7 +273,7 @@ namespace SharpJackApi.Services
                 }
             }
 
-            await Context.SaveChangesAsync(token);
+            await Context.SaveAsync(game, token);
 
             // return the correct answer
             return new Contracts.Answer { PlayerId = game.ActivePlayer, Value = game.ActiveQuestion.Answer };
@@ -327,7 +327,6 @@ namespace SharpJackApi.Services
                         {
                             row.PlayerScore += game.Answers.Count;
                         }
-                        Context.Rows.Update(row);
                     }
 
                     // clear existing answers
@@ -358,7 +357,7 @@ namespace SharpJackApi.Services
                     game.State = GameState.Completed;
                 }
 
-                await Context.SaveChangesAsync(token);
+                await Context.SaveAsync(game, token);
             }
         }
 

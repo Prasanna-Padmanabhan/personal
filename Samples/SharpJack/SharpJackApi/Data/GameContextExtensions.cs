@@ -42,5 +42,18 @@ namespace SharpJackApi.Data
                         .ThenInclude(r => r.Player)
                 .FirstAsync(g => g.Id == gameId, token);
         }
+
+        /// <summary>
+        /// Explicitly 'touch' game entity state to force EF to track and save all changes.
+        /// </summary>
+        /// <param name="context">The context to save.</param>
+        /// <param name="game">The game object.</param>
+        /// <param name="token">The cancellation token.</param>
+        /// <returns>The number of entries saved.</returns>
+        public static Task<int> SaveAsync(this GameContext context, Game game, CancellationToken token)
+        {
+            context.Update(game);
+            return context.SaveChangesAsync(token);
+        }
     }
 }
