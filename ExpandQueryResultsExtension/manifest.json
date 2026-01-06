@@ -1,25 +1,24 @@
 {
   "manifest_version": 3,
   "name": "ADO Dashboard: Auto-Expand Hierarchy in Query Results",
-  "version": "0.2.0",
+  "version": "0.3.0",
   "description": "Auto-expands parent-child rows in Query Results widgets on Azure DevOps dashboards.",
   "icons": { "128": "icons/icon-128.png" },
   "permissions": ["scripting"],
   "host_permissions": [
-    "https://dev.azure.com/msazure/One/_dashboards/dashboard/*",
-    "https://msazure.visualstudio.com/One/_dashboards/dashboard/*"
+    "https://dev.azure.com/msazure/One/_dashboards*",
+    "https://msazure.visualstudio.com/One/_dashboards*"
   ],
   "content_scripts": [
     {
       "matches": [
-        "https://dev.azure.com/msazure/One/_dashboards/dashboard/*",
-        "https://msazure.visualstudio.com/One/_dashboards/dashboard/*"
+        "https://dev.azure.com/msazure/One/_dashboards*",
+        "https://msazure.visualstudio.com/One/_dashboards*"
       ],
       "js": ["content.js"],
       "run_at": "document_idle",
-      "all_frames": true
-      /* For Edge/Chromium: you can also add "world": "MAIN" if needed
-         to interact with page scripts directly, but it's not required here. */
+      "all_frames": true,
+      "world": "MAIN"
     }
   ]
 }
