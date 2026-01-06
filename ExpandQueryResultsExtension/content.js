@@ -40,15 +40,12 @@ function querySelectorDeepWithShadow(root, selector) {
       out.push(...node.querySelectorAll(selector));
     }
 
-    if (node.shadowRoot && visitedCount < MAX_QUERY_NODES && depth < MAX_QUERY_DEPTH) {
+    if (node.shadowRoot) {
       visit(node.shadowRoot, depth + 1);
     }
 
-    if (visitedCount >= MAX_QUERY_NODES) return;
-
-    for (let child = node.firstElementChild; child && visitedCount < MAX_QUERY_NODES; child = child.nextElementSibling) {
+    for (let child = node.firstElementChild; child; child = child.nextElementSibling) {
       visit(child, depth + 1);
-      if (visitedCount >= MAX_QUERY_NODES) break;
     }
   };
 
@@ -138,16 +135,8 @@ function observeAndAutoExpand(root) {
     if (mutations.some(m => m.addedNodes && m.addedNodes.length)) schedule(MUTATION_SCHEDULE_DELAY_MS);
   });
 
-  // Observe only relevant treegrid regions to avoid watching the entire document subtree.
-  const observeTargets = querySelectorDeepWithShadow(root, TREEGRID_SELECTOR);
-  if (observeTargets.length) {
-    observeTargets.forEach(target => {
-      mutationObserver.observe(target, { childList: true, subtree: true });
-    });
-  } else {
-    // Fallback: observe root without subtree to reduce overhead until grids appear.
-    mutationObserver.observe(root, { childList: true, subtree: false });
-  }
+  // Observe root with subtree to detect dynamically added grids anywhere in the document
+  mutationObserver.observe(root, { childList: true, subtree: true });
 
   // Safety net (will stop once expanded)
   interval = setInterval(() => schedule(0), PERIODIC_CHECK_INTERVAL_MS);
