@@ -11,8 +11,8 @@ const INITIAL_EXPANSION_DELAY_MS = 700;
 const PERIODIC_CHECK_INTERVAL_MS = 6000;
 
 // Limits to prevent excessive DOM traversal
-const MAX_QUERY_DEPTH = 50;
-const MAX_QUERY_NODES = 5000;
+const MAX_QUERY_DEPTH = 3;
+const MAX_QUERY_NODES = 20;
 
 // Logging
 const LOG = (...args) => console.log('[ADO Auto-Expand]', ...args);
